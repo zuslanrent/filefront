@@ -65,7 +65,7 @@ export default function RegulationsPage() {
 
   useEffect(() => {
     setRegulations(getRegulations())
-    fetchCategories() // mock getCategories() устгаж API-аар солив
+    fetchCategories()
   }, [])
 
   const filteredRegulations = useMemo(() => {
