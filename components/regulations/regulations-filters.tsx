@@ -1,110 +1,103 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Input } from '@/components/ui/input'
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
-import { Search, X, SlidersHorizontal, CalendarIcon, Filter } from 'lucide-react'
-import type { FilterOptions, Category } from '@/types/regulations'
-import { format } from 'date-fns'
-import { mn } from 'date-fns/locale'
+} from "@/components/ui/popover";
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  CalendarIcon,
+  Filter,
+} from "lucide-react";
+import type { FilterOptions, Category } from "@/types/regulations";
+import { format } from "date-fns";
+import { mn } from "date-fns/locale";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Department {
   id: string | number
   name: string
-  company_name: string
 }
 
 interface RegulationsFiltersProps {
-  filters: FilterOptions
-  onFiltersChange: (filters: FilterOptions) => void
-  categories?: Category[]
+  filters: FilterOptions;
+  onFiltersChange: (filters: FilterOptions) => void;
+  categories?: Category[];
 }
 
-export function RegulationsFilters({ 
-  filters, 
+export function RegulationsFilters({
+  filters,
   onFiltersChange,
   categories = [],
 }: RegulationsFiltersProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
+  // Өөрийн backend-аас departments татна
   useEffect(() => {
-    fetch('http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79')
+    fetch(
+      "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79",
+    )
       .then((res) => res.json())
       .then((data) => {
-        const list = Array.isArray(data) ? data : data.data ?? []
-        setDepartments(list)
-        
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setDepartments(list);
       })
-      .catch((err) => console.error('Хэлтэс татахад алдаа:', err))
-  }, [])
+      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
+  }, []);
 
-  const handleSearchChange = (value: string) => {
-    onFiltersChange({ ...filters, search: value })
-  }
+  const handleSearchChange = (value: string) =>
+    onFiltersChange({ ...filters, search: value });
+  const handleDepartmentChange = (value: string) =>
+    onFiltersChange({ ...filters, department: value });
+  const handleCategoryChange = (value: string) =>
+    onFiltersChange({ ...filters, category: value });
+  const handleStatusChange = (value: string) =>
+    onFiltersChange({ ...filters, status: value as FilterOptions["status"] });
+  const handleSortChange = (value: string) =>
+    onFiltersChange({ ...filters, sortBy: value as FilterOptions["sortBy"] });
+  const handleDateFromChange = (date: Date | undefined) =>
+    onFiltersChange({ ...filters, dateFrom: date });
+  const handleDateToChange = (date: Date | undefined) =>
+    onFiltersChange({ ...filters, dateTo: date });
 
-  const handleDepartmentChange = (value: string) => {
-    onFiltersChange({ ...filters, department: value })
-  }
-
-  const handleCategoryChange = (value: string) => {
-    onFiltersChange({ ...filters, category: value })
-  }
-
-  const handleStatusChange = (value: string) => {
-    onFiltersChange({ ...filters, status: value as FilterOptions['status'] })
-  }
-
-  const handleSortChange = (value: string) => {
-    onFiltersChange({ ...filters, sortBy: value as FilterOptions['sortBy'] })
-  }
-
-  const handleDateFromChange = (date: Date | undefined) => {
-    onFiltersChange({ ...filters, dateFrom: date })
-  }
-
-  const handleDateToChange = (date: Date | undefined) => {
-    onFiltersChange({ ...filters, dateTo: date })
-  }
-
-  const clearFilters = () => {
+  const clearFilters = () =>
     onFiltersChange({
-      search: '',
-      department: 'all',
-      category: 'all',
-      status: 'all',
-      sortBy: 'newest',
+      search: "",
+      department: "all",
+      category: "all",
+      status: "all",
+      sortBy: "newest",
       dateFrom: undefined,
       dateTo: undefined,
-    })
-  }
+    });
 
-  const hasActiveFilters = 
-    filters.search !== '' || 
-    filters.department !== 'all' || 
-    filters.category !== 'all' ||
-    filters.status !== 'all' ||
+  const hasActiveFilters =
+    filters.search !== "" ||
+    filters.department !== "all" ||
+    filters.category !== "all" ||
+    filters.status !== "all" ||
     filters.dateFrom !== undefined ||
-    filters.dateTo !== undefined
+    filters.dateTo !== undefined;
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-      {/* Main filters row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -115,7 +108,7 @@ export function RegulationsFilters({
           />
         </div>
 
-        {/* Category filter */}
+        {/* Бүлэг — page.tsx-аас props-оор ирнэ (API-аас) */}
         <Select value={filters.category} onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-full sm:w-[160px] bg-background">
             <SelectValue placeholder="Бүлэг сонгох" />
@@ -130,22 +123,22 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
-        {/* Department filter — API-аас */}
-        <Select value={filters.department} onValueChange={handleDepartmentChange}>
+        {/* Хэлтэс — өөрийн backend-аас */}
+        <Select
+          value={filters.department}
+          onValueChange={handleDepartmentChange}
+        >
           <SelectTrigger className="w-full sm:w-[180px] bg-background">
             <SelectValue placeholder="Хэлтэс сонгох" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Бүх хэлтэс</SelectItem>
             {departments.map((dept) => (
-              <SelectItem key={dept.id} value={String(dept.id)}>
-                {dept.name}
-              </SelectItem>
-            ))}
+  <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
+))}
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
         <Select value={filters.status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-[140px] bg-background">
             <SelectValue placeholder="Төлөв" />
@@ -157,9 +150,8 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
-        {/* Advanced filter toggle */}
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="bg-background"
@@ -168,7 +160,6 @@ export function RegulationsFilters({
           Нэмэлт
         </Button>
 
-        {/* Clear filters */}
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="size-4 mr-1" />
@@ -177,12 +168,12 @@ export function RegulationsFilters({
         )}
       </div>
 
-      {/* Advanced filters row */}
       {showAdvanced && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center pt-4 border-t">
-          {/* Date from */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Үүссэн огноо:</span>
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              Үүссэн огноо:
+            </span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -192,7 +183,7 @@ export function RegulationsFilters({
                 >
                   <CalendarIcon className="mr-2 size-4" />
                   {filters.dateFrom ? (
-                    format(filters.dateFrom, 'yyyy-MM-dd', { locale: mn })
+                    format(filters.dateFrom, "yyyy-MM-dd", { locale: mn })
                   ) : (
                     <span className="text-muted-foreground">Эхлэх</span>
                   )}
@@ -216,7 +207,7 @@ export function RegulationsFilters({
                 >
                   <CalendarIcon className="mr-2 size-4" />
                   {filters.dateTo ? (
-                    format(filters.dateTo, 'yyyy-MM-dd', { locale: mn })
+                    format(filters.dateTo, "yyyy-MM-dd", { locale: mn })
                   ) : (
                     <span className="text-muted-foreground">Дуусах</span>
                   )}
@@ -231,8 +222,6 @@ export function RegulationsFilters({
               </PopoverContent>
             </Popover>
           </div>
-
-          {/* Sort */}
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground">Эрэмбэлэх:</span>
             <Select value={filters.sortBy} onValueChange={handleSortChange}>
@@ -251,5 +240,5 @@ export function RegulationsFilters({
         </div>
       )}
     </div>
-  )
+  );
 }
