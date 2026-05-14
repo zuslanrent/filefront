@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { VersionHistory } from "@/components/regulations/version-history";
-import { formatFileSize } from "@/lib/mock-data/regulations";
 import { currentUser, canUserUpload } from "@/lib/mock-data/users";
 import type { RegulationFile } from "@/types/regulations";
 import { format } from "date-fns";
@@ -49,21 +48,22 @@ import {
   Ban,
   Loader2,
 } from "lucide-react";
+import { AuditLogSection } from "@/components/regulations/audit-log-section";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const DEPT_URL =
+  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
 
-// Хэлтсийн нэрийг харуулах функц (ID-г шууд харуулах эсвэл API-аас авах)
-function getDepartmentName(deptId: string | null): string {
-  if (!deptId) return "—";
-  // Хэрэв танд departments массив байгаа бол түүнээс хайх
-  // Одоохондоо ID-г шууд харуулж байна
-  return deptId;
+interface Department {
+  id: string | number;
+  name: string;
 }
 
-// Бүлгийн нэрийг харуулах функц
-function getCategoryName(categoryId: string | null): string {
-  if (!categoryId) return "—";
-  return categoryId;
+function formatFileSize(bytes: number): string {
+  if (!bytes) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 function getFileIcon(fileType: string) {
@@ -90,7 +90,6 @@ function getFileIcon(fileType: string) {
 
 export default function RegulationDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [regulation, setRegulation] = useState<RegulationFile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,10 +98,36 @@ export default function RegulationDetailPage() {
   const [isInactivating, setIsInactivating] = useState(false);
   const [showInactivateDialog, setShowInactivateDialog] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
   const canEdit = canUserUpload(currentUser);
 
-  // API-аас regulation дэлгэрэнгүй мэдээллийг татах
+  // ID-г монгол нэрээр орлуулах
+  const getDeptName = (deptId: string | null): string => {
+    if (!deptId) return "—";
+    const found = departments.find((d) => String(d.id) === String(deptId));
+    return found ? found.name : deptId;
+  };
+
+  // Бүлгийн нэр — UUID-г group_name-аар орлуулах
+  const getCategoryName = (cat: string | null): string => {
+    if (!cat) return "—";
+    return cat;
+  };
+
+  // Departments татах
+  useEffect(() => {
+    fetch(DEPT_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setDepartments(list);
+      })
+      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
+  }, []);
+
+  const hasSentViewLog = useRef(false);
+
   const fetchRegulation = async (id: string) => {
     setLoading(true);
     setError(null);
@@ -112,14 +137,13 @@ export default function RegulationDetailPage() {
 
       if (data.success && data.data) {
         const item = data.data;
-        // RegulationFile формат руу хөрвүүлэх
         const transformed: RegulationFile = {
           id: item.uuid,
           name: item.file_name,
           fileName: item.file_name,
-          fileType: item.file_type || "file", // ← шууд file_type авна
+          fileType: item.file_type || "file",
           fileUrl: item.file_url || null,
-          fileSize: parseInt(item.file_size) || 0, // ← string→number
+          fileSize: parseInt(item.file_size) || 0,
           category: item.group_name,
           department: item.division_name,
           status: item.status || "active",
@@ -135,9 +159,10 @@ export default function RegulationDetailPage() {
         };
         setRegulation(transformed);
 
-        // Audit log: view action
-        try {
-          await fetch(`${API_URL}/api/audit-logs`, {
+        // Зөвхөн нэг удаа log бичнэ
+        if (!hasSentViewLog.current) {
+          hasSentViewLog.current = true;
+          fetch(`${API_URL}/api/audit-logs`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -147,17 +172,13 @@ export default function RegulationDetailPage() {
               user_name: currentUser.name,
               user_department: currentUser.department,
               action: "view",
-              timestamp: new Date().toISOString(),
             }),
-          });
-        } catch (err) {
-          console.error("Audit log error:", err);
+          }).catch(() => {});
         }
       } else {
         setError(data.message || "Файл олдсонгүй");
       }
     } catch (err) {
-      console.error("Fetch error:", err);
       setError("Сервертэй холбогдоход алдаа гарлаа");
     } finally {
       setLoading(false);
@@ -166,19 +187,14 @@ export default function RegulationDetailPage() {
 
   useEffect(() => {
     const id = params.id as string;
-    if (id) {
-      fetchRegulation(id);
-    }
+    if (id) fetchRegulation(id);
   }, [params.id]);
 
   const handleDownload = async () => {
-    if (!regulation || !regulation.fileUrl) return;
-
+    if (!regulation?.fileUrl) return;
     setIsDownloading(true);
-
     try {
-      // Audit log: download action
-      await fetch(`${API_URL}/api/audit-logs`, {
+      fetch(`${API_URL}/api/audit-logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -188,12 +204,9 @@ export default function RegulationDetailPage() {
           user_name: currentUser.name,
           user_department: currentUser.department,
           action: "download",
-          timestamp: new Date().toISOString(),
         }),
-      });
+      }).catch(() => {});
 
-      // Файлыг татах (Cloudinary URL-ээс)
-      // Хэрэв Cloudinary URL resource_type='raw' байвал шууд татахад асуудалгүй
       const a = document.createElement("a");
       a.href = regulation.fileUrl;
       a.download = regulation.fileName;
@@ -201,8 +214,7 @@ export default function RegulationDetailPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (err) {
-      console.error("Download error:", err);
+    } catch {
       alert("Файл татахад алдаа гарлаа");
     } finally {
       setIsDownloading(false);
@@ -213,25 +225,22 @@ export default function RegulationDetailPage() {
     if (!regulation || !inactivateReason) return;
     setIsInactivating(true);
     try {
-      const response = await fetch(
-        `${API_URL}/api/regulations/${regulation.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            file_name: regulation.fileName, // ← заавал нэмэх
-            group_name: regulation.category,
-            division_name: regulation.department,
-            approved_date: regulation.approvedDate,
-            status: "inactive",
-            decline_date: new Date().toISOString().split("T")[0],
-            file_size: regulation.fileSize,
-          }),
-        },
-      );
-      const data = await response.json();
+      const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file_name: regulation.fileName,
+          group_name: regulation.category,
+          division_name: regulation.department,
+          approved_date: regulation.approvedDate,
+          status: "inactive",
+          decline_date: new Date().toISOString().split("T")[0],
+          file_size: regulation.fileSize,
+        }),
+      });
+      const data = await res.json();
       if (data.success) {
-        await fetch(`${API_URL}/api/audit-logs`, {
+        fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -243,14 +252,14 @@ export default function RegulationDetailPage() {
             action: "inactivate",
             details: inactivateReason,
           }),
-        });
+        }).catch(() => {});
         await fetchRegulation(regulation.id);
         setShowInactivateDialog(false);
         setInactivateReason("");
       } else {
         alert(data.message || "Хүчингүй болгоход алдаа гарлаа");
       }
-    } catch (err) {
+    } catch {
       alert("Сервертэй холбогдоход алдаа гарлаа");
     } finally {
       setIsInactivating(false);
@@ -290,7 +299,6 @@ export default function RegulationDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4 max-w-5xl">
-        {/* Back button */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/regulations">
@@ -306,9 +314,7 @@ export default function RegulationDetailPage() {
             {getFileIcon(regulation.fileType)}
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {regulation.name}
-                </h1>
+                <h1 className="text-2xl font-semibold">{regulation.name}</h1>
                 <Badge
                   className={
                     regulation.status === "active"
@@ -329,15 +335,13 @@ export default function RegulationDetailPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            {/* Preview button - зөвхөн PDF-д */}
+          <div className="flex gap-2 flex-wrap">
             {isPdf && regulation.fileUrl && (
               <Button variant="outline" onClick={() => setShowPreview(true)}>
                 <Eye className="size-4 mr-2" />
                 Preview харах
               </Button>
             )}
-
             {canDownload && regulation.fileUrl && (
               <Button onClick={handleDownload} disabled={isDownloading}>
                 {isDownloading ? (
@@ -348,7 +352,6 @@ export default function RegulationDetailPage() {
                 Татах
               </Button>
             )}
-
             {canEdit && regulation.status === "active" && (
               <Dialog
                 open={showInactivateDialog}
@@ -374,17 +377,15 @@ export default function RegulationDetailPage() {
                       дараа хувилбарын түүхэнд хадгалагдана.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="reason">Хүчингүй болгох шалтгаан *</Label>
-                      <Textarea
-                        id="reason"
-                        value={inactivateReason}
-                        onChange={(e) => setInactivateReason(e.target.value)}
-                        placeholder="Шалтгаанаа бичнэ үү..."
-                        rows={3}
-                      />
-                    </div>
+                  <div className="space-y-2 py-4">
+                    <Label htmlFor="reason">Хүчингүй болгох шалтгаан *</Label>
+                    <Textarea
+                      id="reason"
+                      value={inactivateReason}
+                      onChange={(e) => setInactivateReason(e.target.value)}
+                      placeholder="Шалтгаанаа бичнэ үү..."
+                      rows={3}
+                    />
                   </div>
                   <DialogFooter>
                     <Button
@@ -423,9 +424,6 @@ export default function RegulationDetailPage() {
                   src={`https://docs.google.com/viewer?url=${encodeURIComponent(regulation.fileUrl)}&embedded=true`}
                   className="w-full h-full rounded-lg border"
                   title={regulation.name}
-                  onError={() =>
-                    alert("Preview ажиллахгүй байна. Татаж авна уу.")
-                  }
                 />
               )}
             </div>
@@ -445,7 +443,7 @@ export default function RegulationDetailPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Inactivated warning */}
+        {/* Inactive warning */}
         {regulation.status === "inactive" && (
           <Card className="mb-6 border-amber-200 bg-amber-50">
             <CardContent className="py-4">
@@ -477,7 +475,6 @@ export default function RegulationDetailPage() {
 
           <TabsContent value="details">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* File info */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Файлын мэдээлэл</CardTitle>
@@ -525,7 +522,6 @@ export default function RegulationDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Regulation info */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Журмын мэдээлэл</CardTitle>
@@ -546,7 +542,7 @@ export default function RegulationDetailPage() {
                       Хариуцсан хэлтэс:
                     </span>
                     <span className="font-medium">
-                      {getDepartmentName(regulation.department)}
+                      {getDeptName(regulation.department)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -593,7 +589,6 @@ export default function RegulationDetailPage() {
 
           <TabsContent value="permissions">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* View permissions */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -606,11 +601,10 @@ export default function RegulationDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {regulation.viewPermissions &&
-                    regulation.viewPermissions.length > 0 ? (
+                    {regulation.viewPermissions?.length > 0 ? (
                       regulation.viewPermissions.map((deptId) => (
                         <Badge key={deptId} variant="secondary">
-                          {getDepartmentName(deptId)}
+                          {getDeptName(deptId)}
                         </Badge>
                       ))
                     ) : (
@@ -622,7 +616,6 @@ export default function RegulationDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Download permissions */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -635,11 +628,10 @@ export default function RegulationDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {regulation.downloadPermissions &&
-                    regulation.downloadPermissions.length > 0 ? (
+                    {regulation.downloadPermissions?.length > 0 ? (
                       regulation.downloadPermissions.map((deptId) => (
                         <Badge key={deptId} variant="secondary">
-                          {getDepartmentName(deptId)}
+                          {getDeptName(deptId)}
                         </Badge>
                       ))
                     ) : (
@@ -658,14 +650,13 @@ export default function RegulationDetailPage() {
               <CardHeader>
                 <CardTitle className="text-base">Хувилбарын түүх</CardTitle>
                 <CardDescription>
-                  Журмын бүх хувилбарууд болон өөрчлөлтийн түүх
+                  Энэ файлтай холбоотой бүх үйлдлүүд
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <VersionHistory
+                <AuditLogSection
+                  fileId={regulation.id}
                   currentVersion={regulation.version}
-                  previousVersions={regulation.previousVersions || []}
-                  currentFile={regulation}
                 />
               </CardContent>
             </Card>

@@ -1,8 +1,15 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { departments } from '@/lib/mock-data/departments'
+
+const DEPT_URL = 'http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79'
+
+interface Department {
+  id: string | number
+  name: string
+}
 
 interface PermissionSelectorProps {
   title: string
@@ -17,9 +24,21 @@ export function PermissionSelector({
   selectedDepartments,
   onSelectionChange,
 }: PermissionSelectorProps) {
+  const [departments, setDepartments] = useState<Department[]>([])
+
+  useEffect(() => {
+    fetch(DEPT_URL)
+      .then(res => res.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : data.data ?? []
+        setDepartments(list)
+      })
+      .catch(err => console.error('Хэлтэс татахад алдаа:', err))
+  }, [])
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      onSelectionChange(departments.map((d) => d.id))
+      onSelectionChange(departments.map(d => String(d.id)))
     } else {
       onSelectionChange([])
     }
@@ -29,11 +48,11 @@ export function PermissionSelector({
     if (checked) {
       onSelectionChange([...selectedDepartments, departmentId])
     } else {
-      onSelectionChange(selectedDepartments.filter((id) => id !== departmentId))
+      onSelectionChange(selectedDepartments.filter(id => id !== departmentId))
     }
   }
 
-  const allSelected = departments.every((d) => selectedDepartments.includes(d.id))
+  const allSelected = departments.length > 0 && departments.every(d => selectedDepartments.includes(String(d.id)))
   const someSelected = selectedDepartments.length > 0 && !allSelected
 
   return (
@@ -52,34 +71,35 @@ export function PermissionSelector({
             data-state={someSelected ? 'indeterminate' : allSelected ? 'checked' : 'unchecked'}
             onCheckedChange={(checked) => handleSelectAll(checked === true)}
           />
-          <Label 
-            htmlFor={`${title}-all`} 
-            className="text-sm font-medium cursor-pointer"
-          >
+          <Label htmlFor={`${title}-all`} className="text-sm font-medium cursor-pointer">
             Бүх хэлтэс
           </Label>
         </div>
 
         {/* Department list */}
-        <div className="grid grid-cols-2 gap-2">
-          {departments.map((dept) => (
-            <div key={dept.id} className="flex items-center gap-2">
-              <Checkbox
-                id={`${title}-${dept.id}`}
-                checked={selectedDepartments.includes(dept.id)}
-                onCheckedChange={(checked) => 
-                  handleDepartmentToggle(dept.id, checked === true)
-                }
-              />
-              <Label 
-                htmlFor={`${title}-${dept.id}`}
-                className="text-sm cursor-pointer"
-              >
-                {dept.name}
-              </Label>
-            </div>
-          ))}
-        </div>
+        {departments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Уншиж байна...</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {departments.map(dept => (
+              <div key={dept.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={`${title}-${dept.id}`}
+                  checked={selectedDepartments.includes(String(dept.id))}
+                  onCheckedChange={(checked) =>
+                    handleDepartmentToggle(String(dept.id), checked === true)
+                  }
+                />
+                <Label
+                  htmlFor={`${title}-${dept.id}`}
+                  className="text-sm cursor-pointer"
+                >
+                  {dept.name}
+                </Label>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedDepartments.length > 0 && (

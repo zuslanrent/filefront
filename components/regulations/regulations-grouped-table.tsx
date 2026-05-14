@@ -260,7 +260,6 @@ export function RegulationsGroupedTable({
                           <TableCell>
                             <Link
                               href={`/regulations/${regulation.id}`}
-                              onClick={() => handleView(regulation)}
                               className="flex items-center gap-3 hover:underline"
                             >
                               {getFileIcon(regulation.fileType)}
