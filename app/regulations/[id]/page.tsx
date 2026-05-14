@@ -114,28 +114,24 @@ export default function RegulationDetailPage() {
         const item = data.data;
         // RegulationFile формат руу хөрвүүлэх
         const transformed: RegulationFile = {
-          id: item.uuid || item.id,
-          name: item.file_name || item.name,
-          fileName: item.file_name || item.fileName,
-          fileType: item.file_type || item.fileType || "pdf",
-          fileUrl: item.file_url || item.fileUrl || null,
-          fileSize: item.file_size || item.fileSize || 0,
-          category: item.group_name || item.category,
-          department: item.division_name || item.department,
+          id: item.uuid,
+          name: item.file_name,
+          fileName: item.file_name,
+          fileType: item.file_type || "file", // ← шууд file_type авна
+          fileUrl: item.file_url || null,
+          fileSize: parseInt(item.file_size) || 0, // ← string→number
+          category: item.group_name,
+          department: item.division_name,
           status: item.status || "active",
-          approvedDate: item.approved_date || item.approvedDate,
-          downloadPermissions:
-            item.download_permissions || item.downloadPermissions || [],
-          viewPermissions: item.view_permissions || item.viewPermissions || [],
-          uploadedBy: item.uploaded_by || item.uploadedBy || "",
-          uploadedAt:
-            item.uploaded_at || item.uploadedAt || new Date().toISOString(),
-          updatedAt:
-            item.updated_at || item.updatedAt || new Date().toISOString(),
+          approvedDate: item.approved_date,
+          downloadPermissions: item.download_permissions || [],
+          viewPermissions: item.view_permissions || [],
+          uploadedBy: item.uploaded_by_name || item.uploaded_by || "",
+          uploadedAt: item.created_at || new Date().toISOString(),
+          updatedAt: item.updated_at || new Date().toISOString(),
           description: item.description || "",
-          version: item.version || 1,
-          previousVersions:
-            item.previous_versions || item.previousVersions || [],
+          version: 1,
+          previousVersions: [],
         };
         setRegulation(transformed);
 
@@ -215,9 +211,7 @@ export default function RegulationDetailPage() {
 
   const handleInactivate = async () => {
     if (!regulation || !inactivateReason) return;
-
     setIsInactivating(true);
-
     try {
       const response = await fetch(
         `${API_URL}/api/regulations/${regulation.id}`,
@@ -225,17 +219,18 @@ export default function RegulationDetailPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            file_name: regulation.fileName, // ← заавал нэмэх
+            group_name: regulation.category,
+            division_name: regulation.department,
+            approved_date: regulation.approvedDate,
             status: "inactive",
-            decline_reason: inactivateReason,
             decline_date: new Date().toISOString().split("T")[0],
+            file_size: regulation.fileSize,
           }),
         },
       );
-
       const data = await response.json();
-
       if (data.success) {
-        // Audit log: inactivate action
         await fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -247,11 +242,8 @@ export default function RegulationDetailPage() {
             user_department: currentUser.department,
             action: "inactivate",
             details: inactivateReason,
-            timestamp: new Date().toISOString(),
           }),
         });
-
-        // Refresh regulation data
         await fetchRegulation(regulation.id);
         setShowInactivateDialog(false);
         setInactivateReason("");
@@ -259,7 +251,6 @@ export default function RegulationDetailPage() {
         alert(data.message || "Хүчингүй болгоход алдаа гарлаа");
       }
     } catch (err) {
-      console.error("Inactivate error:", err);
       alert("Сервертэй холбогдоход алдаа гарлаа");
     } finally {
       setIsInactivating(false);
@@ -421,26 +412,33 @@ export default function RegulationDetailPage() {
 
         {/* PDF Preview Dialog */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
-            <DialogHeader>
+          <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>{regulation.name}</DialogTitle>
               <DialogDescription>{regulation.fileName}</DialogDescription>
             </DialogHeader>
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 px-6 pb-2">
               {regulation.fileUrl && (
                 <iframe
-                  src={regulation.fileUrl}
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(regulation.fileUrl)}&embedded=true`}
                   className="w-full h-full rounded-lg border"
                   title={regulation.name}
+                  onError={() =>
+                    alert("Preview ажиллахгүй байна. Татаж авна уу.")
+                  }
                 />
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 pb-6">
               <Button variant="outline" onClick={() => setShowPreview(false)}>
                 Хаах
               </Button>
-              <Button onClick={handleDownload}>
-                <Download className="size-4 mr-2" />
+              <Button onClick={handleDownload} disabled={isDownloading}>
+                {isDownloading ? (
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="size-4 mr-2" />
+                )}
                 Татах
               </Button>
             </DialogFooter>

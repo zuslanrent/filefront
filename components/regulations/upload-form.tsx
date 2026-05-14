@@ -129,6 +129,12 @@ export function UploadForm() {
         );
         formData.append("uploaded_by", currentUser.id);
         formData.append("uploaded_by_name", currentUser.name);
+        // ← Permissions нэмэх
+        formData.append("view_permissions", JSON.stringify(viewPermissions));
+        formData.append(
+          "download_permissions",
+          JSON.stringify(downloadPermissions),
+        );
 
         const uploadRes = await fetch(`${API_URL}/api/regulations/upload`, {
           method: "POST",
