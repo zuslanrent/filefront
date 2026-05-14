@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   Command,
   CommandEmpty,
@@ -18,118 +18,194 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { AuditLogTable } from '@/components/regulations/audit-log-table'
-import { getAuditLogs } from '@/lib/mock-data/regulations'
-import { departments } from '@/lib/mock-data/departments'
-import { allUsers } from '@/lib/mock-data/users'
-import type { AuditLog } from '@/types/regulations'
-import { ArrowLeft, Search, History, X, SlidersHorizontal, User, Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
+} from "@/components/ui/popover";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AuditLogTable } from "@/components/regulations/audit-log-table";
+import type { AuditLog } from "@/types/regulations";
+import {
+  ArrowLeft,
+  Search,
+  History,
+  X,
+  SlidersHorizontal,
+  User,
+  Check,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type ActionFilter = 'all' | AuditLog['action']
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const DEPT_URL =
+  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+
+type ActionFilter = "all" | AuditLog["action"];
 
 interface Filters {
-  search: string
-  department: string
-  action: ActionFilter
-  users: string[]
+  search: string;
+  department: string;
+  action: ActionFilter;
+  users: string[];
+}
+
+interface Department {
+  id: string | number;
+  name: string;
+}
+
+interface ApiAuditLog {
+  uuid: string;
+  file_id: string;
+  file_name: string;
+  user_id: string;
+  user_name: string;
+  user_department: string;
+  action: string;
+  details: string;
+  created_at: string;
 }
 
 export default function AuditLogPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>({
-    search: '',
-    department: 'all',
-    action: 'all',
+    search: "",
+    department: "all",
+    action: "all",
     users: [],
-  })
-  const [userSelectOpen, setUserSelectOpen] = useState(false)
+  });
+  const [userSelectOpen, setUserSelectOpen] = useState(false);
+
+  // Unique users from logs
+  const allUsers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; email: string }>();
+    logs.forEach((log) => {
+      if (!map.has(log.userId)) {
+        map.set(log.userId, { id: log.userId, name: log.userName, email: "" });
+      }
+    });
+    return Array.from(map.values());
+  }, [logs]);
+
+  // API-аас audit logs татах
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.search) params.append("search", filters.search);
+      if (filters.department !== "all")
+        params.append("department", filters.department);
+      if (filters.action !== "all") params.append("action", filters.action);
+
+      const res = await fetch(`${API_URL}/api/audit-logs?${params}`);
+      const data = await res.json();
+
+      if (data.success) {
+        // API response-г AuditLog type-д хөрвүүлэх
+        const mapped: AuditLog[] = data.data.map((log: ApiAuditLog) => ({
+          id: log.uuid,
+          fileId: log.file_id,
+          fileName: log.file_name,
+          userId: log.user_id,
+          userName: log.user_name,
+          userDepartment: log.user_department,
+          action: log.action as AuditLog["action"],
+          details: log.details,
+          timestamp: new Date(log.created_at),
+        }));
+        setLogs(mapped);
+      }
+    } catch (err) {
+      console.error("Audit log татахад алдаа:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const data = getAuditLogs()
-    setLogs(data)
-  }, [])
+    // Departments татах
+    fetch(DEPT_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setDepartments(list);
+      })
+      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
+
+    fetchLogs();
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [filters.department, filters.action]);
 
   const filteredLogs = useMemo(() => {
-    let result = [...logs]
+    let result = [...logs];
 
-    // Search filter
     if (filters.search) {
-      const searchLower = filters.search.toLowerCase()
+      const s = filters.search.toLowerCase();
       result = result.filter(
         (log) =>
-          log.fileName.toLowerCase().includes(searchLower) ||
-          log.userName.toLowerCase().includes(searchLower)
-      )
+          log.fileName.toLowerCase().includes(s) ||
+          log.userName.toLowerCase().includes(s),
+      );
     }
 
-    // Department filter
-    if (filters.department !== 'all') {
-      result = result.filter((log) => log.userDepartment === filters.department)
-    }
-
-    // Action filter
-    if (filters.action !== 'all') {
-      result = result.filter((log) => log.action === filters.action)
-    }
-
-    // User filter
     if (filters.users.length > 0) {
-      result = result.filter((log) => filters.users.includes(log.userId))
+      result = result.filter((log) => filters.users.includes(log.userId));
     }
 
-    // Sort by timestamp (newest first)
-    result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    result.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
 
-    return result
-  }, [logs, filters])
+    return result;
+  }, [logs, filters]);
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      department: 'all',
-      action: 'all',
-      users: [],
-    })
-  }
+    setFilters({ search: "", department: "all", action: "all", users: [] });
+  };
 
   const toggleUser = (userId: string) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       users: prev.users.includes(userId)
-        ? prev.users.filter(u => u !== userId)
+        ? prev.users.filter((u) => u !== userId)
         : [...prev.users, userId],
-    }))
-  }
+    }));
+  };
 
-  const hasActiveFilters = 
-    filters.search !== '' || 
-    filters.department !== 'all' || 
-    filters.action !== 'all' ||
-    filters.users.length > 0
+  const hasActiveFilters =
+    filters.search !== "" ||
+    filters.department !== "all" ||
+    filters.action !== "all" ||
+    filters.users.length > 0;
 
   const actionOptions: { value: ActionFilter; label: string }[] = [
-    { value: 'all', label: 'Бүх үйлдэл' },
-    { value: 'view', label: 'Үзсэн' },
-    { value: 'download', label: 'Татсан' },
-    { value: 'upload', label: 'Оруулсан' },
-    { value: 'edit', label: 'Засварласан' },
-    { value: 'delete', label: 'Устгасан' },
-    { value: 'inactivate', label: 'Хүчингүй болгосон' },
-  ]
+    { value: "all", label: "Бүх үйлдэл" },
+    { value: "view", label: "Үзсэн" },
+    { value: "download", label: "Татсан" },
+    { value: "upload", label: "Оруулсан" },
+    { value: "edit", label: "Засварласан" },
+    { value: "delete", label: "Устгасан" },
+    { value: "inactivate", label: "Хүчингүй болгосон" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4 max-w-7xl">
-        {/* Back button */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/regulations">
@@ -139,13 +215,14 @@ export default function AuditLogPage() {
           </Button>
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <div className="flex items-center justify-center size-10 rounded-lg bg-blue-100">
             <History className="size-5 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Audit Log</h1>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Audit Log
+            </h1>
             <p className="text-sm text-muted-foreground">
               Хэн, хэзээ, ямар файл үзсэн/татсан/зассан
             </p>
@@ -160,7 +237,6 @@ export default function AuditLogPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Filters */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               {/* Search */}
               <div className="relative flex-1">
@@ -168,19 +244,25 @@ export default function AuditLogPage() {
                 <Input
                   placeholder="Файл эсвэл хэрэглэгчээр хайх..."
                   value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, search: e.target.value })
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && fetchLogs()}
                   className="pl-9"
                 />
               </div>
 
-              {/* User selector */}
+              {/* User selector — logs-оос динамикаар */}
               <Popover open={userSelectOpen} onOpenChange={setUserSelectOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-[200px] justify-start">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-[200px] justify-start"
+                  >
                     <User className="size-4 mr-2" />
-                    {filters.users.length > 0 
+                    {filters.users.length > 0
                       ? `${filters.users.length} ажилтан сонгосон`
-                      : 'Ажилтан сонгох'}
+                      : "Ажилтан сонгох"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-72" align="start">
@@ -189,20 +271,21 @@ export default function AuditLogPage() {
                     <CommandList>
                       <CommandEmpty>Олдсонгүй</CommandEmpty>
                       <CommandGroup>
-                        {allUsers.map(user => (
+                        {allUsers.map((user) => (
                           <CommandItem
                             key={user.id}
                             value={user.name}
                             onSelect={() => toggleUser(user.id)}
                           >
-                            <Check className={cn(
-                              "mr-2 size-4",
-                              filters.users.includes(user.id) ? "opacity-100" : "opacity-0"
-                            )} />
-                            <div>
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">{user.email}</p>
-                            </div>
+                            <Check
+                              className={cn(
+                                "mr-2 size-4",
+                                filters.users.includes(user.id)
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            <p className="font-medium">{user.name}</p>
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -211,10 +294,12 @@ export default function AuditLogPage() {
                 </PopoverContent>
               </Popover>
 
-              {/* Department filter */}
-              <Select 
-                value={filters.department} 
-                onValueChange={(value) => setFilters({ ...filters, department: value })}
+              {/* Department filter — intranet API-аас */}
+              <Select
+                value={filters.department}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, department: value })
+                }
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Хэлтэс" />
@@ -222,7 +307,7 @@ export default function AuditLogPage() {
                 <SelectContent>
                   <SelectItem value="all">Бүх хэлтэс</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
+                    <SelectItem key={dept.id} value={String(dept.id)}>
                       {dept.name}
                     </SelectItem>
                   ))}
@@ -230,9 +315,11 @@ export default function AuditLogPage() {
               </Select>
 
               {/* Action filter */}
-              <Select 
-                value={filters.action} 
-                onValueChange={(value) => setFilters({ ...filters, action: value as ActionFilter })}
+              <Select
+                value={filters.action}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, action: value as ActionFilter })
+                }
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SlidersHorizontal className="size-4 mr-2" />
@@ -247,7 +334,6 @@ export default function AuditLogPage() {
                 </SelectContent>
               </Select>
 
-              {/* Clear filters */}
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <X className="size-4 mr-1" />
@@ -256,12 +342,12 @@ export default function AuditLogPage() {
               )}
             </div>
 
-            {/* Selected users badges */}
+            {/* Selected user badges */}
             {filters.users.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {filters.users.map(userId => {
-                  const user = allUsers.find(u => u.id === userId)
-                  if (!user) return null
+                {filters.users.map((userId) => {
+                  const user = allUsers.find((u) => u.id === userId);
+                  if (!user) return null;
                   return (
                     <Badge key={userId} variant="secondary" className="gap-1">
                       {user.name}
@@ -272,21 +358,25 @@ export default function AuditLogPage() {
                         <X className="size-3" />
                       </button>
                     </Badge>
-                  )
+                  );
                 })}
               </div>
             )}
 
-            {/* Stats */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Нийт {filteredLogs.length} бүртгэл</span>
+            <div className="text-sm text-muted-foreground">
+              Нийт {filteredLogs.length} бүртгэл
             </div>
 
-            {/* Table */}
-            <AuditLogTable logs={filteredLogs} />
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Уншиж байна...
+              </div>
+            ) : (
+              <AuditLogTable logs={filteredLogs} />
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

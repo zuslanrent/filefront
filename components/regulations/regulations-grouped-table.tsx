@@ -3,54 +3,29 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
-  FileText,
-  FileSpreadsheet,
-  Presentation,
-  Image,
-  File,
-  Download,
-  Eye,
-  MoreHorizontal,
-  Clock,
-  Building2,
-  ChevronDown,
-  ChevronRight,
-  FolderOpen,
-  Edit,
-  Trash2,
-  XCircle,
-  Info,
+  FileText, FileSpreadsheet, Presentation, Image, File,
+  Download, Eye, MoreHorizontal, Clock, Building2,
+  ChevronDown, ChevronRight, FolderOpen, Edit, Trash2, XCircle, Info,
 } from 'lucide-react'
 import type { RegulationFile, Category } from '@/types/regulations'
-import { getDepartmentName } from '@/lib/mock-data/departments'
-import { formatFileSize, addAuditLog } from '@/lib/mock-data/regulations'
-import { getCategoryName } from '@/lib/mock-data/categories'
 import { currentUser } from '@/lib/mock-data/users'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface RegulationsGroupedTableProps {
-  regulations: RegulationFile[]
+  regulations: RegulationFile[]  // ← RegulationFile төрлийг ашиглах
   categories: Category[]
   userDepartment: string
   canManage: boolean
@@ -59,25 +34,50 @@ interface RegulationsGroupedTableProps {
   onDeactivate?: (regulation: RegulationFile) => void
 }
 
+// formatFileSize mock import-г устгаж дотроо тодорхойлно
+function formatFileSize(bytes: number): string {
+  if (!bytes) return '—'
+  if (bytes < 1024)         return `${bytes} B`
+  if (bytes < 1024 * 1024)  return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
 function getFileIcon(fileType: string) {
-  const type = fileType.toLowerCase()
+  const type = fileType?.toLowerCase() || ''
   switch (type) {
     case 'pdf':
     case 'doc':
-    case 'docx':
-      return <FileText className="size-5 text-red-500" />
+    case 'docx': return <FileText className="size-5 text-red-500" />
     case 'xls':
-    case 'xlsx':
-      return <FileSpreadsheet className="size-5 text-green-600" />
+    case 'xlsx': return <FileSpreadsheet className="size-5 text-green-600" />
     case 'ppt':
-    case 'pptx':
-      return <Presentation className="size-5 text-orange-500" />
+    case 'pptx': return <Presentation className="size-5 text-orange-500" />
     case 'png':
     case 'jpg':
-    case 'jpeg':
-      return <Image className="size-5 text-blue-500" />
-    default:
-      return <File className="size-5 text-muted-foreground" />
+    case 'jpeg': 
+    case 'image': return <Image className="size-5 text-blue-500" />
+    default: return <File className="size-5 text-muted-foreground" />
+  }
+}
+
+// API руу audit log бичих
+async function postAuditLog(payload: {
+  file_id: string
+  file_name: string
+  user_id: string
+  user_name: string
+  user_department: string
+  action: string
+  details?: string
+}) {
+  try {
+    await fetch(`${API_URL}/api/audit-logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (err) {
+    console.error('Audit log бичихэд алдаа:', err)
   }
 }
 
@@ -95,17 +95,18 @@ export function RegulationsGroupedTable({
   )
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
-  // Group regulations by category
+  // Бүлэглэлт: category -аар бүлэглэх
   const groupedRegulations = useMemo(() => {
     const grouped: Record<string, RegulationFile[]> = {}
     
+    // Бүлэг тус бүрт тохирох журамуудыг хийх
     categories.forEach(cat => {
       grouped[cat.id] = regulations.filter(r => r.category === cat.id)
     })
     
-    // Add uncategorized
+    // Бусад (category нь ямар ч бүлэгт тохирохгүй)
     const uncategorized = regulations.filter(
-      r => !categories.some(c => c.id === r.category)
+      r => !r.category || !categories.some(c => c.id === r.category)
     )
     if (uncategorized.length > 0) {
       grouped['uncategorized'] = uncategorized
@@ -123,42 +124,63 @@ export function RegulationsGroupedTable({
   }
 
   const handleView = (regulation: RegulationFile) => {
-    addAuditLog({
-      fileId: regulation.id,
-      fileName: regulation.name,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userDepartment: currentUser.department,
+    postAuditLog({
+      file_id: regulation.id,
+      file_name: regulation.name,
+      user_id: currentUser.id,
+      user_name: currentUser.name,
+      user_department: currentUser.department,
       action: 'view',
-      timestamp: new Date(),
     })
   }
 
   const handleDownload = async (regulation: RegulationFile) => {
-    if (!regulation.downloadPermissions.includes(userDepartment) && userDepartment !== 'it') {
+    if (!canDownload(regulation)) {
+      console.warn('Татаж авах эрхгүй')
       return
     }
 
     setDownloadingId(regulation.id)
-    
-    addAuditLog({
-      fileId: regulation.id,
-      fileName: regulation.name,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userDepartment: currentUser.department,
+
+    postAuditLog({
+      file_id: regulation.id,
+      file_name: regulation.name,
+      user_id: currentUser.id,
+      user_name: currentUser.name,
+      user_department: currentUser.department,
       action: 'download',
-      timestamp: new Date(),
     })
 
-    await new Promise(resolve => setTimeout(resolve, 500))
-    setDownloadingId(null)
-    
-    alert(`${regulation.fileName} татагдлаа (demo)`)
+    // Файл татах (хэрэв fileUrl байвал)
+    if (regulation.fileUrl) {
+      try {
+        const response = await fetch(regulation.fileUrl)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = regulation.fileName
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } catch (error) {
+        console.error('Файл татахад алдаа:', error)
+      }
+    } else {
+      console.warn('fileUrl байхгүй байна')
+    }
+
+    setTimeout(() => setDownloadingId(null), 500)
   }
 
   const canDownload = (regulation: RegulationFile) => {
-    return regulation.downloadPermissions.includes(userDepartment) || userDepartment === 'it'
+    // downloadPermissions ашиглах
+    if (regulation.downloadPermissions && regulation.downloadPermissions.length > 0) {
+      return regulation.downloadPermissions.includes(userDepartment) || userDepartment === 'it'
+    }
+    // default: department-аар шалгах
+    return regulation.department === userDepartment || userDepartment === 'it'
   }
 
   if (regulations.length === 0) {
@@ -175,8 +197,16 @@ export function RegulationsGroupedTable({
 
   const allCategories = [
     ...categories,
-    ...(groupedRegulations['uncategorized']?.length 
-      ? [{ id: 'uncategorized', name: 'Бусад', description: '', order: 999 }] 
+    ...(groupedRegulations['uncategorized']?.length
+      ? [{ 
+          id: 'uncategorized', 
+          name: 'Бусад', 
+          description: '', 
+          order: 999, 
+          parentId: null, 
+          createdAt: '', 
+          updatedAt: '' 
+        }]
       : [])
   ]
 
@@ -198,11 +228,9 @@ export function RegulationsGroupedTable({
               <CollapsibleTrigger asChild>
                 <button className="flex items-center justify-between w-full px-4 py-3 bg-muted/50 hover:bg-muted transition-colors text-left">
                   <div className="flex items-center gap-3">
-                    {isOpen ? (
-                      <ChevronDown className="size-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-5 text-muted-foreground" />
-                    )}
+                    {isOpen
+                      ? <ChevronDown className="size-5 text-muted-foreground" />
+                      : <ChevronRight className="size-5 text-muted-foreground" />}
                     <FolderOpen className="size-5 text-primary" />
                     <span className="font-semibold">{category.name}</span>
                     <Badge variant="secondary" className="ml-2">
@@ -213,127 +241,125 @@ export function RegulationsGroupedTable({
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[35%]">Файлын нэр</TableHead>
-                      <TableHead>Хэлтэс</TableHead>
-                      <TableHead>Батлагдсан огноо</TableHead>
-                      <TableHead>Төлөв</TableHead>
-                      <TableHead>Хэмжээ</TableHead>
-                      <TableHead className="text-right">Үйлдэл</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categoryRegulations.map(regulation => (
-                      <TableRow key={regulation.id}>
-                        <TableCell>
-                          <Link
-                            href={`/regulations/${regulation.id}`}
-                            onClick={() => handleView(regulation)}
-                            className="flex items-center gap-3 hover:underline"
-                          >
-                            {getFileIcon(regulation.fileType)}
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{regulation.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {regulation.fileName}
-                              </p>
-                            </div>
-                          </Link>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="size-3.5 text-muted-foreground" />
-                            <span className="text-sm">{getDepartmentName(regulation.department)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="size-3.5 text-muted-foreground" />
-                            <span className="text-sm">
-                              {new Date(regulation.approvedDate).toLocaleDateString('mn-MN')}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={regulation.status === 'active' ? 'default' : 'secondary'}
-                            className={regulation.status === 'active'
-                              ? 'bg-green-100 text-green-700 border-green-200'
-                              : 'bg-gray-100 text-gray-600 border-gray-200'}
-                          >
-                            {regulation.status === 'active' ? 'Хүчинтэй' : 'Хүчингүй'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {formatFileSize(regulation.fileSize)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link
-                                  href={`/regulations/${regulation.id}`}
-                                  onClick={() => handleView(regulation)}
-                                >
-                                  <Eye className="size-4 mr-2" />
-                                  Харах
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/regulations/${regulation.id}`}>
-                                  <Info className="size-4 mr-2" />
-                                  Бүртгэлийн дэлгэрэнгүй
-                                </Link>
-                              </DropdownMenuItem>
-                              {canDownload(regulation) && (
-                                <DropdownMenuItem
-                                  onClick={() => handleDownload(regulation)}
-                                  disabled={downloadingId === regulation.id}
-                                >
-                                  <Download className="size-4 mr-2" />
-                                  {downloadingId === regulation.id ? 'Татаж байна...' : 'Татах'}
-                                </DropdownMenuItem>
-                              )}
-                              
-                              {canManage && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => onEdit?.(regulation)}>
-                                    <Edit className="size-4 mr-2" />
-                                    Засах
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => onDeactivate?.(regulation)}
-                                    className="text-orange-600"
-                                  >
-                                    <XCircle className="size-4 mr-2" />
-                                    Идэвхгүй болгох
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => onDelete?.(regulation)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="size-4 mr-2" />
-                                    Устгах
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[35%]">Файлын нэр</TableHead>
+                        <TableHead>Хэлтэс</TableHead>
+                        <TableHead>Батлагдсан огноо</TableHead>
+                        <TableHead>Төлөв</TableHead>
+                        <TableHead>Хэмжээ</TableHead>
+                        <TableHead className="text-right">Үйлдэл</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {categoryRegulations.map(regulation => (
+                        <TableRow key={regulation.id}>
+                          <TableCell>
+                            <Link
+                              href={`/regulations/${regulation.id}`}
+                              onClick={() => handleView(regulation)}
+                              className="flex items-center gap-3 hover:underline"
+                            >
+                              {getFileIcon(regulation.fileType)}
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{regulation.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {regulation.fileName}
+                                </p>
+                              </div>
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <Building2 className="size-3.5 text-muted-foreground" />
+                              <span className="text-sm">{regulation.department || '—'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="size-3.5 text-muted-foreground" />
+                              <span className="text-sm">
+                                {regulation.approvedDate
+                                  ? new Date(regulation.approvedDate).toLocaleDateString('mn-MN')
+                                  : '—'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={regulation.status === 'active' ? 'default' : 'secondary'}
+                              className={regulation.status === 'active'
+                                ? 'bg-green-100 text-green-700 border-green-200'
+                                : 'bg-gray-100 text-gray-600 border-gray-200'}
+                            >
+                              <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${
+                                regulation.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                              }`} />
+                              {regulation.status === 'active' ? 'Хүчинтэй' : 'Хүчингүй'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {formatFileSize(regulation.fileSize)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/regulations/${regulation.id}`} onClick={() => handleView(regulation)}>
+                                    <Eye className="size-4 mr-2" />Харах
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/regulations/${regulation.id}`}>
+                                    <Info className="size-4 mr-2" />Бүртгэлийн дэлгэрэнгүй
+                                  </Link>
+                                </DropdownMenuItem>
+                                {canDownload(regulation) && regulation.fileUrl && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleDownload(regulation)}
+                                    disabled={downloadingId === regulation.id}
+                                  >
+                                    <Download className="size-4 mr-2" />
+                                    {downloadingId === regulation.id ? 'Татаж байна...' : 'Татах'}
+                                  </DropdownMenuItem>
+                                )}
+                                {canManage && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => onEdit?.(regulation)}>
+                                      <Edit className="size-4 mr-2" />Засах
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => onDeactivate?.(regulation)}
+                                      className="text-orange-600"
+                                    >
+                                      <XCircle className="size-4 mr-2" />Идэвхгүй болгох
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => onDelete?.(regulation)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="size-4 mr-2" />Устгах
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CollapsibleContent>
             </div>
           </Collapsible>

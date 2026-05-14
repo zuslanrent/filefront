@@ -1,151 +1,156 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Calendar } from '@/components/ui/calendar'
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { FileUploadZone } from './file-upload-zone'
-import { PermissionSelector } from './permission-selector'
-import { NotificationSelector, type NotificationConfig } from './notification-selector'
-import { departments } from '@/lib/mock-data/departments'
-import { getCategories } from '@/lib/mock-data/categories'
-import { currentUser } from '@/lib/mock-data/users'
-import { addRegulation, addAuditLog, addNotification } from '@/lib/mock-data/regulations'
-import type { RegulationFile, Category } from '@/types/regulations'
-import { CalendarIcon, Loader2, ArrowLeft, User, Clock } from 'lucide-react'
-import { format } from 'date-fns'
-import { mn } from 'date-fns/locale'
-import Link from 'next/link'
+} from "@/components/ui/popover";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { FileUploadZone } from "./file-upload-zone";
+import { PermissionSelector } from "./permission-selector";
+import {
+  NotificationSelector,
+  type NotificationConfig,
+} from "./notification-selector";
+import { currentUser } from "@/lib/mock-data/users";
+import type { Category } from "@/types/regulations";
+import { CalendarIcon, Loader2, ArrowLeft, User, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { mn } from "date-fns/locale";
+import Link from "next/link";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const DEPT_URL =
+  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+
+interface Department {
+  id: string | number;
+  name: string;
+}
 
 export function UploadForm() {
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([])
-  
-  // Form state
-  const [name, setName] = useState('')
-  const [department, setDepartment] = useState('')
-  const [category, setCategory] = useState('')
-  const [approvedDate, setApprovedDate] = useState<Date>()
-  const [description, setDescription] = useState('')
-  const [viewPermissions, setViewPermissions] = useState<string[]>([])
-  const [downloadPermissions, setDownloadPermissions] = useState<string[]>([])
-  const [files, setFiles] = useState<File[]>([])
-  const [notificationConfig, setNotificationConfig] = useState<NotificationConfig>({
-    type: 'all',
-    departments: [],
-    users: [],
-    groupEmail: '',
-  })
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  const [name, setName] = useState("");
+  const [department, setDepartment] = useState("");
+  const [category, setCategory] = useState("");
+  const [approvedDate, setApprovedDate] = useState<Date>();
+  const [description, setDescription] = useState("");
+  const [viewPermissions, setViewPermissions] = useState<string[]>([]);
+  const [downloadPermissions, setDownloadPermissions] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [notificationConfig, setNotificationConfig] =
+    useState<NotificationConfig>({
+      type: "all",
+      departments: [],
+      users: [],
+      groupEmail: "",
+    });
 
   useEffect(() => {
-    setCategories(getCategories())
-  }, [])
+    // Groups татах
+    fetch(`${API_URL}/api/groups`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setCategories(
+            data.data.map((g: any) => ({
+              id: g.uuid,
+              name: g.group_name,
+              description: g.description || "",
+            })),
+          );
+        }
+      })
+      .catch((err) => console.error("Бүлэг татахад алдаа:", err));
+
+    // Departments — intranet API-аас татах
+    fetch(DEPT_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setDepartments(list);
+      })
+      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!name || !department || !category || !approvedDate || files.length === 0) {
-      alert('Бүх талбарыг бөглөнө үү')
-      return
+    e.preventDefault();
+    if (
+      !name ||
+      !department ||
+      !category ||
+      !approvedDate ||
+      files.length === 0
+    ) {
+      alert("Бүх талбарыг бөглөнө үү");
+      return;
     }
-
-    setIsSubmitting(true)
-
+    setIsSubmitting(true);
     try {
-      // Simulate upload delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const token = localStorage.getItem("token");
+      const authHeader: Record<string, string> = token
+        ? { Authorization: `Bearer ${token}` }
+        : {};
 
-      // Create regulation for each file
       for (const file of files) {
-        const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
-        
-        const newRegulation: RegulationFile = {
-          id: `reg${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name,
-          fileName: file.name,
-          fileType: fileExtension,
-          fileSize: file.size,
-          fileUrl: `/mock-files/${file.name}`,
-          department,
-          category,
-          approvedDate,
-          uploadedBy: currentUser.id,
-          uploadedAt: new Date(),
-          description,
-          viewPermissions: viewPermissions.length > 0 ? viewPermissions : departments.map(d => d.id),
-          downloadPermissions: downloadPermissions.length > 0 ? downloadPermissions : [currentUser.department],
-          status: 'active',
-          version: 1,
-          previousVersions: [],
-          updatedAt: new Date(),
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", name);
+        formData.append("group_name", category);
+        formData.append("division_name", department);
+        formData.append("description", description);
+        formData.append(
+          "approved_date",
+          approvedDate ? format(approvedDate, "yyyy-MM-dd") : "",
+        );
+        formData.append("uploaded_by", currentUser.id);
+        formData.append("uploaded_by_name", currentUser.name);
+
+        const uploadRes = await fetch(`${API_URL}/api/regulations/upload`, {
+          method: "POST",
+          headers: { ...authHeader },
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          alert(`Файл оруулахад алдаа: ${uploadData.message}`);
         }
-
-        // Add to storage
-        addRegulation(newRegulation)
-
-        // Add audit log
-        addAuditLog({
-          fileId: newRegulation.id,
-          fileName: newRegulation.name,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userDepartment: currentUser.department,
-          action: 'upload',
-          timestamp: new Date(),
-          details: `Шинэ журам нэмэгдлээ: ${name}`,
-        })
-
-        // Add notification based on config
-        const notification = {
-          type: 'new_regulation' as const,
-          title: 'Шинэ журам нэмэгдлээ',
-          message: `${name} - ${file.name}`,
-          fileId: newRegulation.id,
-          createdAt: new Date(),
-          read: false,
-          targetDepartments: notificationConfig.type === 'all' 
-            ? departments.map(d => d.id)
-            : notificationConfig.type === 'departments'
-              ? notificationConfig.departments
-              : [],
-          targetUsers: notificationConfig.type === 'users' ? notificationConfig.users : undefined,
-          notifyAll: notificationConfig.type === 'all',
-          notifyEmail: notificationConfig.type === 'email' ? notificationConfig.groupEmail : undefined,
-        }
-
-        addNotification(notification)
       }
-
-      // Redirect to regulations list
-      router.push('/regulations')
+      router.push("/regulations");
     } catch (error) {
-      console.error('Upload error:', error)
-      alert('Алдаа гарлаа. Дахин оролдоно уу.')
+      console.error("Upload error:", error);
+      alert("Алдаа гарлаа. Дахин оролдоно уу.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Back button */}
       <div>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/regulations">
@@ -155,12 +160,12 @@ export function UploadForm() {
         </Button>
       </div>
 
-      {/* File upload */}
+      {/* Файл оруулах */}
       <Card>
         <CardHeader>
           <CardTitle>Файл оруулах</CardTitle>
           <CardDescription>
-            Олон файл нэгэн зэрэг сонгох боломжтой (PDF, DOC, PPT, зураг гэх мэт)
+            PDF, DOC, DOCX, XLS, XLSX файл оруулах боломжтой
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,7 +173,7 @@ export function UploadForm() {
         </CardContent>
       </Card>
 
-      {/* Basic info */}
+      {/* Үндсэн мэдээлэл */}
       <Card>
         <CardHeader>
           <CardTitle>Үндсэн мэдээлэл</CardTitle>
@@ -177,7 +182,6 @@ export function UploadForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Regulation name */}
           <div className="space-y-2">
             <Label htmlFor="name">Журмын нэр *</Label>
             <Input
@@ -190,16 +194,16 @@ export function UploadForm() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Category */}
+            {/* Бүлэг — өөрийн API-аас */}
             <div className="space-y-2">
               <Label htmlFor="category">Бүлэг *</Label>
-              <Select value={category} onValueChange={setCategory} required>
+              <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Бүлэг сонгох" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
+                    <SelectItem key={cat.id} value={cat.name}>
                       {cat.name}
                     </SelectItem>
                   ))}
@@ -207,16 +211,16 @@ export function UploadForm() {
               </Select>
             </div>
 
-            {/* Department */}
+            {/* Хэлтэс — intranet API-аас */}
             <div className="space-y-2">
               <Label htmlFor="department">Хариуцсан хэлтэс *</Label>
-              <Select value={department} onValueChange={setDepartment} required>
+              <Select value={department} onValueChange={setDepartment}>
                 <SelectTrigger id="department">
                   <SelectValue placeholder="Хэлтэс сонгох" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
+                    <SelectItem key={dept.id} value={dept.name}>
                       {dept.name}
                     </SelectItem>
                   ))}
@@ -225,7 +229,7 @@ export function UploadForm() {
             </div>
           </div>
 
-          {/* Approved date */}
+          {/* Батлагдсан огноо */}
           <div className="space-y-2">
             <Label>Батлагдсан огноо *</Label>
             <Popover>
@@ -236,7 +240,7 @@ export function UploadForm() {
                 >
                   <CalendarIcon className="mr-2 size-4" />
                   {approvedDate ? (
-                    format(approvedDate, 'yyyy-MM-dd', { locale: mn })
+                    format(approvedDate, "yyyy-MM-dd", { locale: mn })
                   ) : (
                     <span className="text-muted-foreground">Огноо сонгох</span>
                   )}
@@ -252,7 +256,7 @@ export function UploadForm() {
             </Popover>
           </div>
 
-          {/* Description */}
+          {/* Тайлбар */}
           <div className="space-y-2">
             <Label htmlFor="description">Тайлбар</Label>
             <Textarea
@@ -264,21 +268,30 @@ export function UploadForm() {
             />
           </div>
 
-          {/* Auto-filled fields */}
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="size-4" />
-              <span>Хэн оруулсан: <span className="text-foreground font-medium">{currentUser.name}</span></span>
+              <span>
+                Хэн оруулсан:{" "}
+                <span className="text-foreground font-medium">
+                  {currentUser.name}
+                </span>
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="size-4" />
-              <span>Хэзээ: <span className="text-foreground font-medium">{format(new Date(), 'yyyy-MM-dd HH:mm', { locale: mn })}</span></span>
+              <span>
+                Хэзээ:{" "}
+                <span className="text-foreground font-medium">
+                  {format(new Date(), "yyyy-MM-dd HH:mm", { locale: mn })}
+                </span>
+              </span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Permissions */}
+      {/* Эрхийн тохиргоо */}
       <Card>
         <CardHeader>
           <CardTitle>Эрхийн тохиргоо</CardTitle>
@@ -293,7 +306,6 @@ export function UploadForm() {
             selectedDepartments={viewPermissions}
             onSelectionChange={setViewPermissions}
           />
-
           <PermissionSelector
             title="Татах эрх"
             description="Эдгээр хэлтсүүд файлыг татаж авах боломжтой"
@@ -303,7 +315,7 @@ export function UploadForm() {
         </CardContent>
       </Card>
 
-      {/* Notification Settings */}
+      {/* Мэдэгдлийн тохиргоо */}
       <Card>
         <CardHeader>
           <CardTitle>Мэдэгдлийн тохиргоо</CardTitle>
@@ -326,9 +338,9 @@ export function UploadForm() {
         </Button>
         <Button type="submit" disabled={isSubmitting || files.length === 0}>
           {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-          {isSubmitting ? 'Хадгалж байна...' : 'Хадгалах'}
+          {isSubmitting ? "Хадгалж байна..." : "Хадгалах"}
         </Button>
       </div>
     </form>
-  )
+  );
 }
