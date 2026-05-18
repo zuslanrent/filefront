@@ -112,20 +112,15 @@ export default function RegulationsPage() {
     }
   };
 
-  // Groups-ийг API-аас татах
   const fetchCategories = async () => {
     try {
       const res = await fetch(`${API_URL}/api/groups`);
       const data = await res.json();
       if (data.success) {
         const mapped: Category[] = data.data.map((g: any) => ({
-          id: g.uuid,
+          id: g.group_name, // ← UUID биш group_name
           name: g.group_name,
           description: g.description || "",
-          order: g.order || 0,
-          parentId: g.parent_id || null,
-          createdAt: g.created_at || new Date().toISOString(),
-          updatedAt: g.updated_at || new Date().toISOString(),
         }));
         setCategories(mapped);
       }
@@ -135,16 +130,42 @@ export default function RegulationsPage() {
   };
 
   // Regulation-ийг идэвхгүй болгох API функц
-  const deactivateRegulation = async (uuid: string, reason: string) => {
+  // Regulation-ийг идэвхгүй болгох
+  const deactivateRegulation = async (
+    regulation: RegulationFile,
+    reason: string,
+  ) => {
     try {
-      const res = await fetch(`${API_URL}/api/regulations/${uuid}`, {
+      const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
         method: "PUT",
-        headers: authHeaders(),
-        body: JSON.stringify({ status: "inactive", decline_reason: reason }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file_name: regulation.fileName, // ← заавал
+          group_name: regulation.category,
+          division_name: regulation.department,
+          approved_date: regulation.approvedDate,
+          file_size: regulation.fileSize,
+          status: "inactive",
+          decline_date: new Date().toISOString().split("T")[0],
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        await fetchRegulations(); // Дахин татах
+        // Audit log
+        fetch(`${API_URL}/api/audit-logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            file_id: regulation.id,
+            file_name: regulation.name,
+            user_id: currentUser.id,
+            user_name: currentUser.name,
+            user_department: currentUser.department,
+            action: "inactivate",
+            details: reason,
+          }),
+        }).catch(() => {});
+        await fetchRegulations();
         return true;
       }
       return false;
@@ -154,16 +175,30 @@ export default function RegulationsPage() {
     }
   };
 
-  // Regulation-ийг устгах API функц
-  const deleteRegulation = async (uuid: string) => {
+  // Regulation устгах
+  const deleteRegulation = async (regulation: RegulationFile) => {
     try {
-      const res = await fetch(`${API_URL}/api/regulations/${uuid}`, {
+      const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
         method: "DELETE",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
       if (data.success) {
-        await fetchRegulations(); // Дахин татах
+        // Audit log
+        fetch(`${API_URL}/api/audit-logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            file_id: regulation.id,
+            file_name: regulation.name,
+            user_id: currentUser.id,
+            user_name: currentUser.name,
+            user_department: currentUser.department,
+            action: "delete",
+            details: "Устгагдлаа",
+          }),
+        }).catch(() => {});
+        await fetchRegulations();
         return true;
       }
       return false;
@@ -180,32 +215,44 @@ export default function RegulationsPage() {
 
   const filteredRegulations = useMemo(() => {
     let result = [...regulations];
+
     if (filters.search) {
       const s = filters.search.toLowerCase();
       result = result.filter(
         (r) =>
           r.name.toLowerCase().includes(s) ||
           r.fileName.toLowerCase().includes(s) ||
-          (r.description && r.description.toLowerCase().includes(s)),
+          (r as any).description?.toLowerCase().includes(s),
       );
     }
-    if (filters.department !== "all")
-      result = result.filter((r) => r.department === filters.department);
-    if (filters.category !== "all")
-      result = result.filter((r) => r.category === filters.category);
-    if (filters.status !== "all")
-      result = result.filter((r) => r.status === filters.status);
-    if (filters.dateFrom)
+
+    // department filter — division_name-тай харьцуулна
+    if (filters.department !== "all") {
       result = result.filter(
-        (r) => new Date(r.uploadedAt) >= filters.dateFrom!,
+        (r) => String(r.department) === String(filters.department),
       );
-    if (filters.dateTo)
-      result = result.filter((r) => new Date(r.uploadedAt) <= filters.dateTo!);
-    result = result.filter(
-      (r) =>
-        r.viewPermissions?.includes(currentUser.department) ||
-        currentUser.department === "it",
-    );
+    }
+
+    // category filter — group_name-тай харьцуулна
+    if (filters.category !== "all") {
+      result = result.filter((r) => r.category === filters.category);
+    }
+
+    if (filters.status !== "all") {
+      result = result.filter((r) => r.status === filters.status);
+    }
+
+    if (filters.dateFrom) {
+      result = result.filter(
+        (r) => r.approvedDate && new Date(r.approvedDate) >= filters.dateFrom!,
+      );
+    }
+    if (filters.dateTo) {
+      result = result.filter(
+        (r) => r.approvedDate && new Date(r.approvedDate) <= filters.dateTo!,
+      );
+    }
+
     switch (filters.sortBy) {
       case "newest":
         result.sort(
@@ -229,6 +276,7 @@ export default function RegulationsPage() {
         );
         break;
     }
+
     return result;
   }, [regulations, filters]);
 
@@ -242,7 +290,7 @@ export default function RegulationsPage() {
   const confirmDeactivate = async () => {
     if (!deactivateDialog.regulation || !deactivateReason) return;
     const success = await deactivateRegulation(
-      deactivateDialog.regulation.id,
+      deactivateDialog.regulation, // ← id биш бүтэн object
       deactivateReason,
     );
     if (success) {
@@ -258,7 +306,7 @@ export default function RegulationsPage() {
 
   const confirmDelete = async () => {
     if (!deleteDialog.regulation) return;
-    const success = await deleteRegulation(deleteDialog.regulation.id);
+    const success = await deleteRegulation(deleteDialog.regulation); // ← id биш бүтэн object
     if (success) {
       setDeleteDialog({ open: false, regulation: null });
     } else {

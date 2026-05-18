@@ -30,8 +30,8 @@ import { mn } from "date-fns/locale";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Department {
-  id: string | number
-  name: string
+  id: string | number;
+  name: string;
 }
 
 interface RegulationsFiltersProps {
@@ -48,7 +48,6 @@ export function RegulationsFilters({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
 
-  // Өөрийн backend-аас departments татна
   useEffect(() => {
     fetch(
       "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79",
@@ -123,21 +122,19 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
-        {/* Хэлтэс — өөрийн backend-аас */}
-        <Select
-          value={filters.department}
-          onValueChange={handleDepartmentChange}
-        >
-          <SelectTrigger className="w-full sm:w-[180px] bg-background">
-            <SelectValue placeholder="Хэлтэс сонгох" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Бүх хэлтэс</SelectItem>
-            {departments.map((dept) => (
-  <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
-))}
-          </SelectContent>
-        </Select>
+        <Select value={filters.department} onValueChange={handleDepartmentChange}>
+  <SelectTrigger className="w-full sm:w-[180px] bg-background">
+    <SelectValue placeholder="Хэлтэс сонгох" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Бүх хэлтэс</SelectItem>
+    {departments.map(dept => (
+      <SelectItem key={dept.id} value={String(dept.name)}>
+        {dept.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 
         <Select value={filters.status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-[140px] bg-background">

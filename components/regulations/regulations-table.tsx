@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState } from "react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -9,15 +9,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 import {
   FileText,
   FileSpreadsheet,
@@ -29,41 +29,44 @@ import {
   MoreHorizontal,
   Clock,
   Building2,
-} from 'lucide-react'
-import type { RegulationFile } from '@/types/regulations'
-import { getDepartmentName } from '@/lib/mock-data/departments'
-import { formatFileSize, addAuditLog } from '@/lib/mock-data/regulations'
-import { currentUser } from '@/lib/mock-data/users'
+} from "lucide-react";
+import type { RegulationFile } from "@/types/regulations";
+import { getDepartmentName } from "@/lib/mock-data/departments";
+import { formatFileSize, addAuditLog } from "@/lib/mock-data/regulations";
+import { currentUser } from "@/lib/mock-data/users";
 
 interface RegulationsTableProps {
-  regulations: RegulationFile[]
-  userDepartment: string
+  regulations: RegulationFile[];
+  userDepartment: string;
 }
 
 function getFileIcon(fileType: string) {
-  const type = fileType.toLowerCase()
+  const type = fileType.toLowerCase();
   switch (type) {
-    case 'pdf':
-    case 'doc':
-    case 'docx':
-      return <FileText className="size-5 text-red-500" />
-    case 'xls':
-    case 'xlsx':
-      return <FileSpreadsheet className="size-5 text-green-600" />
-    case 'ppt':
-    case 'pptx':
-      return <Presentation className="size-5 text-orange-500" />
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-      return <Image className="size-5 text-blue-500" />
+    case "pdf":
+    case "doc":
+    case "docx":
+      return <FileText className="size-5 text-red-500" />;
+    case "xls":
+    case "xlsx":
+      return <FileSpreadsheet className="size-5 text-green-600" />;
+    case "ppt":
+    case "pptx":
+      return <Presentation className="size-5 text-orange-500" />;
+    case "png":
+    case "jpg":
+    case "jpeg":
+      return <Image className="size-5 text-blue-500" />;
     default:
-      return <File className="size-5 text-muted-foreground" />
+      return <File className="size-5 text-muted-foreground" />;
   }
 }
 
-export function RegulationsTable({ regulations, userDepartment }: RegulationsTableProps) {
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+export function RegulationsTable({
+  regulations,
+  userDepartment,
+}: RegulationsTableProps) {
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleView = (regulation: RegulationFile) => {
     // Log view action
@@ -73,18 +76,18 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
       userId: currentUser.id,
       userName: currentUser.name,
       userDepartment: currentUser.department,
-      action: 'view',
+      action: "view",
       timestamp: new Date(),
-    })
-  }
+    });
+  };
 
   const handleDownload = async (regulation: RegulationFile) => {
     if (!regulation.downloadPermissions.includes(userDepartment)) {
-      return
+      return;
     }
 
-    setDownloadingId(regulation.id)
-    
+    setDownloadingId(regulation.id);
+
     // Log download action
     addAuditLog({
       fileId: regulation.id,
@@ -92,36 +95,44 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
       userId: currentUser.id,
       userName: currentUser.name,
       userDepartment: currentUser.department,
-      action: 'download',
+      action: "download",
       timestamp: new Date(),
-    })
+    });
 
     // Simulate download delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    setDownloadingId(null)
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setDownloadingId(null);
+
     // In a real app, this would download the actual file
-    alert(`${regulation.fileName} татагдлаа (demo)`)
-  }
+    alert(`${regulation.fileName} татагдлаа (demo)`);
+  };
 
   const canView = (regulation: RegulationFile) => {
-    return regulation.viewPermissions.includes(userDepartment) || userDepartment === 'it'
-  }
+    return (
+      regulation.viewPermissions.includes(userDepartment) ||
+      userDepartment === "it"
+    );
+  };
 
   const canDownload = (regulation: RegulationFile) => {
-    return regulation.downloadPermissions.includes(userDepartment) || userDepartment === 'it'
-  }
+    return (
+      regulation.downloadPermissions.includes(userDepartment) ||
+      userDepartment === "it"
+    );
+  };
 
   if (regulations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FileText className="size-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium text-foreground">Дүрэм журам олдсонгүй</h3>
+        <h3 className="text-lg font-medium text-foreground">
+          Дүрэм журам олдсонгүй
+        </h3>
         <p className="text-sm text-muted-foreground mt-1">
           Хайлтын үр дүн олдсонгүй эсвэл танд харах эрх байхгүй байна
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -129,9 +140,10 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[40%]">Файлын нэр</TableHead>
+            <TableHead className="w-[30%]">Файлын нэр</TableHead>
             <TableHead>Хэлтэс</TableHead>
-            <TableHead>Батлагдсан</TableHead>
+            <TableHead>Тайлбар</TableHead>
+            <TableHead>Батлагдсан огноо</TableHead>
             <TableHead>Төлөв</TableHead>
             <TableHead>Хэмжээ</TableHead>
             <TableHead className="text-right">Үйлдэл</TableHead>
@@ -139,15 +151,15 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
         </TableHeader>
         <TableBody>
           {regulations.map((regulation) => {
-            const viewable = canView(regulation)
-            const downloadable = canDownload(regulation)
+            const viewable = canView(regulation);
+            const downloadable = canDownload(regulation);
 
-            if (!viewable) return null
+            if (!viewable) return null;
 
             return (
               <TableRow key={regulation.id}>
                 <TableCell>
-                  <Link 
+                  <Link
                     href={`/regulations/${regulation.id}`}
                     onClick={() => handleView(regulation)}
                     className="flex items-center gap-3 hover:underline"
@@ -164,25 +176,33 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Building2 className="size-3.5 text-muted-foreground" />
-                    <span className="text-sm">{getDepartmentName(regulation.department)}</span>
+                    <span className="text-sm">
+                      {getDepartmentName(regulation.department)}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Clock className="size-3.5 text-muted-foreground" />
                     <span className="text-sm">
-                      {new Date(regulation.approvedDate).toLocaleDateString('mn-MN')}
+                      {new Date(regulation.approvedDate).toLocaleDateString(
+                        "mn-MN",
+                      )}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant={regulation.status === 'active' ? 'default' : 'secondary'}
-                    className={regulation.status === 'active' 
-                      ? 'bg-green-100 text-green-700 border-green-200' 
-                      : 'bg-gray-100 text-gray-600 border-gray-200'}
+                    variant={
+                      regulation.status === "active" ? "default" : "secondary"
+                    }
+                    className={
+                      regulation.status === "active"
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : "bg-gray-100 text-gray-600 border-gray-200"
+                    }
                   >
-                    {regulation.status === 'active' ? 'Хүчинтэй' : 'Хүчингүй'}
+                    {regulation.status === "active" ? "Хүчинтэй" : "Хүчингүй"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -199,7 +219,7 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link 
+                        <Link
                           href={`/regulations/${regulation.id}`}
                           onClick={() => handleView(regulation)}
                         >
@@ -213,17 +233,19 @@ export function RegulationsTable({ regulations, userDepartment }: RegulationsTab
                           disabled={downloadingId === regulation.id}
                         >
                           <Download className="size-4 mr-2" />
-                          {downloadingId === regulation.id ? 'Татаж байна...' : 'Татах'}
+                          {downloadingId === regulation.id
+                            ? "Татаж байна..."
+                            : "Татах"}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            )
+            );
           })}
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
