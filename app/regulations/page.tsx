@@ -24,7 +24,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// ✅ Production болон Local орчинд Mixed Content болон хаяг олдохгүй унах алдаанаас сэргийлэх тохиргоо
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
 function authHeaders(): HeadersInit {
   const token =
@@ -56,9 +57,10 @@ function transformRegulation(item: any): RegulationFile {
     description: item.description || "",
     viewPermissions: item.view_permissions || item.viewPermissions || [],
     version: item.version || 1,
-    previousVersions: item.previous_versions || item.previousVersions || [], // ← нэмэх
+    previousVersions: item.previous_versions || item.previousVersions || [],
   };
 }
+
 export default function RegulationsPage() {
   const [regulations, setRegulations] = useState<RegulationFile[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -114,11 +116,13 @@ export default function RegulationsPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/groups`);
+      const res = await fetch(`${API_URL}/api/groups`, {
+        headers: authHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         const mapped: Category[] = data.data.map((g: any) => ({
-          id: g.group_name, // ← UUID биш group_name
+          id: g.group_name,
           name: g.group_name,
           description: g.description || "",
         }));
@@ -129,7 +133,6 @@ export default function RegulationsPage() {
     }
   };
 
-  // Regulation-ийг идэвхгүй болгох API функц
   // Regulation-ийг идэвхгүй болгох
   const deactivateRegulation = async (
     regulation: RegulationFile,
@@ -138,9 +141,9 @@ export default function RegulationsPage() {
     try {
       const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
-          file_name: regulation.fileName, // ← заавал
+          file_name: regulation.fileName,
           group_name: regulation.category,
           division_name: regulation.department,
           approved_date: regulation.approvedDate,
@@ -151,10 +154,10 @@ export default function RegulationsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Audit log
+        // Audit log үүсгэх
         fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify({
             file_id: regulation.id,
             file_name: regulation.name,
@@ -165,6 +168,7 @@ export default function RegulationsPage() {
             details: reason,
           }),
         }).catch(() => {});
+        
         await fetchRegulations();
         return true;
       }
@@ -180,14 +184,14 @@ export default function RegulationsPage() {
     try {
       const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
       });
       const data = await res.json();
       if (data.success) {
-        // Audit log
+        // Audit log үүсгэх
         fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify({
             file_id: regulation.id,
             file_name: regulation.name,
@@ -198,6 +202,7 @@ export default function RegulationsPage() {
             details: "Устгагдлаа",
           }),
         }).catch(() => {});
+        
         await fetchRegulations();
         return true;
       }
@@ -226,14 +231,12 @@ export default function RegulationsPage() {
       );
     }
 
-    // department filter — division_name-тай харьцуулна
     if (filters.department !== "all") {
       result = result.filter(
         (r) => String(r.department) === String(filters.department),
       );
     }
 
-    // category filter — group_name-тай харьцуулна
     if (filters.category !== "all") {
       result = result.filter((r) => r.category === filters.category);
     }
@@ -290,7 +293,7 @@ export default function RegulationsPage() {
   const confirmDeactivate = async () => {
     if (!deactivateDialog.regulation || !deactivateReason) return;
     const success = await deactivateRegulation(
-      deactivateDialog.regulation, // ← id биш бүтэн object
+      deactivateDialog.regulation,
       deactivateReason,
     );
     if (success) {
@@ -306,7 +309,7 @@ export default function RegulationsPage() {
 
   const confirmDelete = async () => {
     if (!deleteDialog.regulation) return;
-    const success = await deleteRegulation(deleteDialog.regulation); // ← id биш бүтэн object
+    const success = await deleteRegulation(deleteDialog.regulation);
     if (success) {
       setDeleteDialog({ open: false, regulation: null });
     } else {
@@ -334,7 +337,7 @@ export default function RegulationsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        await fetchCategories(); // Дахин татаж жагсаалт шинэчлэх
+        await fetchCategories();
         setNewCategoryDialog(false);
         setNewCategoryName("");
         setNewCategoryDesc("");

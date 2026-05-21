@@ -27,7 +27,8 @@ import type { FilterOptions, Category } from "@/types/regulations";
 import { format } from "date-fns";
 import { mn } from "date-fns/locale";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// ✅ Дотоод сүлжээний API хаягийг хувьсагчид шилжүүлэв
+const DEPT_API_URL = "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
 
 interface Department {
   id: string | number;
@@ -49,9 +50,7 @@ export function RegulationsFilters({
   const [departments, setDepartments] = useState<Department[]>([]);
 
   useEffect(() => {
-    fetch(
-      "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79",
-    )
+    fetch(DEPT_API_URL)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : (data.data ?? []);
@@ -97,6 +96,7 @@ export function RegulationsFilters({
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        {/* Хайлт */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -107,7 +107,7 @@ export function RegulationsFilters({
           />
         </div>
 
-        {/* Бүлэг — page.tsx-аас props-оор ирнэ (API-аас) */}
+        {/* Бүлэг сонгох */}
         <Select value={filters.category} onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-full sm:w-[160px] bg-background">
             <SelectValue placeholder="Бүлэг сонгох" />
@@ -122,20 +122,22 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
+        {/* Хэлтэс сонгох */}
         <Select value={filters.department} onValueChange={handleDepartmentChange}>
-  <SelectTrigger className="w-full sm:w-[180px] bg-background">
-    <SelectValue placeholder="Хэлтэс сонгох" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Бүх хэлтэс</SelectItem>
-    {departments.map(dept => (
-      <SelectItem key={dept.id} value={String(dept.name)}>
-        {dept.name}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+          <SelectTrigger className="w-full sm:w-[180px] bg-background">
+            <SelectValue placeholder="Хэлтэс сонгох" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Бүх хэлтэс</SelectItem>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={String(dept.name)}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
+        {/* Төлөв сонгох */}
         <Select value={filters.status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-[140px] bg-background">
             <SelectValue placeholder="Төлөв" />
@@ -147,83 +149,111 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
+        {/* Нэмэлт шүүлтүүр товчлуур */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="bg-background"
+          className={`bg-background transition-colors ${showAdvanced ? "bg-accent text-accent-foreground" : ""}`}
         >
           <Filter className="size-4 mr-2" />
           Нэмэлт
         </Button>
 
+        {/* Цэвэрлэх товчлуур */}
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-destructive hover:text-destructive hover:bg-destructive/10">
             <X className="size-4 mr-1" />
             Цэвэрлэх
           </Button>
         )}
       </div>
 
+      {/* Нэмэлт шүүлтүүрийн хэсэг */}
       {showAdvanced && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center pt-4 border-t">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center pt-4 border-t animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               Үүссэн огноо:
             </span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-[140px] justify-start text-left font-normal bg-background"
+            
+            {/* Эхлэх огноо */}
+            <div className="relative flex items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-[140px] justify-start text-left font-normal bg-background pr-7"
+                  >
+                    <CalendarIcon className="mr-2 size-4 shrink-0" />
+                    <span className="truncate">
+                      {filters.dateFrom ? format(filters.dateFrom, "yyyy-MM-dd", { locale: mn }) : "Эхлэх"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dateFrom}
+                    onSelect={handleDateFromChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {filters.dateFrom && (
+                <button 
+                  onClick={() => handleDateFromChange(undefined)}
+                  className="absolute right-2 text-muted-foreground hover:text-foreground"
                 >
-                  <CalendarIcon className="mr-2 size-4" />
-                  {filters.dateFrom ? (
-                    format(filters.dateFrom, "yyyy-MM-dd", { locale: mn })
-                  ) : (
-                    <span className="text-muted-foreground">Эхлэх</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={filters.dateFrom}
-                  onSelect={handleDateFromChange}
-                />
-              </PopoverContent>
-            </Popover>
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+
             <span className="text-muted-foreground">-</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-[140px] justify-start text-left font-normal bg-background"
+
+            {/* Дуусах огноо */}
+            <div className="relative flex items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-[140px] justify-start text-left font-normal bg-background pr-7"
+                  >
+                    <CalendarIcon className="mr-2 size-4 shrink-0" />
+                    <span className="truncate">
+                      {filters.dateTo ? format(filters.dateTo, "yyyy-MM-dd", { locale: mn }) : "Дуусах"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dateTo}
+                    onSelect={handleDateToChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {filters.dateTo && (
+                <button 
+                  onClick={() => handleDateToChange(undefined)}
+                  className="absolute right-2 text-muted-foreground hover:text-foreground"
                 >
-                  <CalendarIcon className="mr-2 size-4" />
-                  {filters.dateTo ? (
-                    format(filters.dateTo, "yyyy-MM-dd", { locale: mn })
-                  ) : (
-                    <span className="text-muted-foreground">Дуусах</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={filters.dateTo}
-                  onSelect={handleDateToChange}
-                />
-              </PopoverContent>
-            </Popover>
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">Эрэмбэлэх:</span>
+
+          {/* Эрэмбэлэлт */}
+          <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Эрэмбэлэх:</span>
             <Select value={filters.sortBy} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-[180px] bg-background">
-                <SlidersHorizontal className="size-4 mr-2" />
+              <SelectTrigger className="w-full sm:w-[180px] bg-background">
+                <SlidersHorizontal className="size-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Эрэмбэлэх" />
               </SelectTrigger>
               <SelectContent>

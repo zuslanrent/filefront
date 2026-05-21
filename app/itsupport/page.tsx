@@ -14,7 +14,11 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+// ❌ Хуучин хувилбар:
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+// ✅ Илүү аюулгүй хувилбар:
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
 export default function SupportPage() {
   const [categories, setCategories]                   = useState<Category[]>([])

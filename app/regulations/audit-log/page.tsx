@@ -45,9 +45,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const DEPT_URL =
-  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+// ✅ Vercel болон Local орчинд Mixed Content алдаа гаргахгүй аюулгүй тохиргоо
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+const DEPT_URL = `${API_URL}/api/departments/external`;
 
 type ActionFilter = "all" | AuditLog["action"];
 
@@ -112,7 +112,6 @@ export default function AuditLogPage() {
       const data = await res.json();
 
       if (data.success) {
-        // API response-г AuditLog type-д хөрвүүлэх
         const mapped: AuditLog[] = data.data.map((log: ApiAuditLog) => ({
           id: log.uuid,
           fileId: log.file_id,
@@ -252,7 +251,7 @@ export default function AuditLogPage() {
                 />
               </div>
 
-              {/* User selector — logs-оос динамикаар */}
+              {/* User selector */}
               <Popover open={userSelectOpen} onOpenChange={setUserSelectOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -294,7 +293,7 @@ export default function AuditLogPage() {
                 </PopoverContent>
               </Popover>
 
-              {/* Department filter — intranet API-аас */}
+              {/* Department filter */}
               <Select
                 value={filters.department}
                 onValueChange={(value) =>

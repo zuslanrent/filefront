@@ -50,9 +50,12 @@ import {
 } from "lucide-react";
 import { AuditLogSection } from "@/components/regulations/audit-log-section";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const DEPT_URL =
-  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+// ❌ Хуучин буруу хувилбар:
+// const DEPT_URL = "http://intranet.bodigroup.mn/intranet/api/departments?api_key=...";
+
+// ✅ Шинэ зөв хувилбар (Express backend-ээр дамжуулна):
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+const DEPT_URL = `${API_URL}/api/departments/external`;
 
 interface Department {
   id: string | number;
