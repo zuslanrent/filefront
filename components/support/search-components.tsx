@@ -174,7 +174,7 @@ export function CategorySidebar({
           className={cn(
             "w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all font-medium",
             selectedCategory === null
-              ? "bg-primary text-primary-foreground shadow-md"
+              ? "bg-blue-300 text-primary-foreground shadow-md"
               : "text-sidebar-foreground hover:bg-sidebar-accent/50"
           )}
         >

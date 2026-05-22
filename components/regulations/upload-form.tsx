@@ -40,8 +40,7 @@ import { mn } from "date-fns/locale";
 import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const DEPT_URL =
-  "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+const DEPT_URL = '/api/departments';
 
 interface Department {
   id: string | number;

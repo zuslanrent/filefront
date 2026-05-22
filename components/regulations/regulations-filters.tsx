@@ -28,7 +28,7 @@ import { format } from "date-fns";
 import { mn } from "date-fns/locale";
 
 // ✅ Дотоод сүлжээний API хаягийг хувьсагчид шилжүүлэв
-const DEPT_API_URL = "http://intranet.bodigroup.mn/intranet/api/departments?api_key=int_api_7f766e223f04c1638db65580fcb356be2aeb3e79";
+const DEPT_API_URL = "/api/departments";
 
 interface Department {
   id: string | number;

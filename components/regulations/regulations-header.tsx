@@ -53,7 +53,7 @@ export function RegulationsHeader({ totalCount, activeCount, canUpload }: Regula
         </Button>
 
         {userCanUpload && (
-          <Button asChild>
+          <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
             <Link href="/regulations/upload">
               <Plus className="size-4 mr-2" />
               Шинэ журам

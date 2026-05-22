@@ -67,7 +67,7 @@ export function Sidebar() {
           <Building2 className="size-4 text-white" />
         </div>
         <div>
-            <a href="http://intranet.bodigroup.mn/intranet/dashboard.php"><p className="font-semibold text-slate-800 text-sm">Intranet</p>
+            <a href=""><p className="font-semibold text-slate-800 text-sm">Intranet</p>
           <p className="text-xs text-slate-400">Дотоод систем</p></a>
           
         </div>

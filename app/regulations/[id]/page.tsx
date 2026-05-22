@@ -55,7 +55,7 @@ import { AuditLogSection } from "@/components/regulations/audit-log-section";
 
 // ✅ Шинэ зөв хувилбар (Express backend-ээр дамжуулна):
 const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
-const DEPT_URL = `${API_URL}/api/departments/external`;
+const DEPT_URL = '/api/departments';
 
 interface Department {
   id: string | number;
