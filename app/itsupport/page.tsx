@@ -14,10 +14,26 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// ❌ Хуучин хувилбар:
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+// ✅ Систем даяар ашиглагдаж буй нэгдсэн статик хэлтсийн жагсаалт
+const STATIC_DEPARTMENTS = [
+  "Бизнес хөгжлийн хэлтэс",
+  "Санхүү төлөвлөлтийн хэлтэс",
+  "Санхүү бүртгэлийн хэлтэс",
+  "Хүний нөөцийн хэлтэс",
+  "Хууль, эрх зүй гэрээний алба",
+  "Захиргааны хэлтэс",
+  "Мэдээлэл технологийн хэлтэс",
+  "БОНЗ, Олон нийттэй харилцах хэлтэс",
+  "Барилга угсралтын хэлтэс",
+  "Төлөвлөгөө мониторинг чанарын удирдлагын хэлтэс",
+  "Инженерингийн хэлтэс",
+  "Эрсдэл дотоод хяналтын алба",
+  "Хөдлөх бүрэлдэхүүний хэлтэс",
+  "Судалгаа, Хөгжүүлэлтийн R&D төв",
+  "Худалдан авалтын хэлтэс",
+  "Захиргаа, аж ахуй, тээвэр удирдлагын хэлтэс"
+]
 
-// ✅ Илүү аюулгүй хувилбар:
 const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
 export default function SupportPage() {
@@ -55,6 +71,7 @@ export default function SupportPage() {
     fetchErrors()
   }, [])
 
+  // 🎯 Шүүлтүүрийн логик: Статик текст утгаар шүүнэ
   const filteredErrors = useMemo(() => {
     return errors.filter((error) => {
       const matchesCategory   = !selectedCategory || error.categoryId === selectedCategory
@@ -152,11 +169,13 @@ export default function SupportPage() {
           onManageCategories={() => setShowCategoryManager(true)}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
+          {/* 🎯 SearchHeader-лүү departments пропсыг дамжууллаа */}
           <SearchHeader
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onAddNew={() => { setEditingError(null); setShowForm(true) }}
             categories={categories}
+            departments={STATIC_DEPARTMENTS} // 👈 Энд статик жагсаалтаа өглөө
             selectedDepartment={selectedDepartment}
             onDepartmentChange={setSelectedDepartment}
             selectedStatus={selectedStatus}
@@ -190,6 +209,7 @@ export default function SupportPage() {
       {showForm && (
         <ErrorForm
           categories={categories} editingError={editingError}
+          departments={STATIC_DEPARTMENTS} // 👈 Форм нээгдэхэд хэлтэс сонгох уналттай цэсэнд зориулж бас өглөө
           onSave={handleSaveError}
           onClose={() => { setShowForm(false); setEditingError(null) }}
         />

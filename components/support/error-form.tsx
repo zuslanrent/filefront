@@ -19,12 +19,13 @@ import { cn } from "@/lib/utils"
 
 interface ErrorFormProps {
   categories: Category[]
+  departments: string[] // 👈 Дээд хуудаснаас статик жагсаалтыг хүлээж авах пропс нэмэв
   editingError: ErrorRecord | null
   onSave: (error: Omit<ErrorRecord, "id" | "createdAt">) => void
   onClose: () => void
 }
 
-export function ErrorForm({ categories, editingError, onSave, onClose }: ErrorFormProps) {
+export function ErrorForm({ categories, departments, editingError, onSave, onClose }: ErrorFormProps) {
   const [keyword, setKeyword] = useState(editingError?.keyword || "")
   const [description, setDescription] = useState(editingError?.description || "")
   const [solution, setSolution] = useState(editingError?.solution || "")
@@ -37,7 +38,8 @@ export function ErrorForm({ categories, editingError, onSave, onClose }: ErrorFo
   const [subCategories, setSubCategories] = useState<SubCategory[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const departments = ["IT хэлтэс", "Санхүү хэлтэс", "Хүний нөөцийн хэлтэс", "Борлуулалтын хэлтэс", "Үйл ажиллагааны хэлтэс"]
+  // ❌ Хуучин хатуу кодчилсон массив устсан:
+  // const departments = ["IT хэлтэс", "Санхүү хэлтэс", ...]
 
   // Update sub-categories when category changes
   useEffect(() => {
@@ -190,6 +192,7 @@ export function ErrorForm({ categories, editingError, onSave, onClose }: ErrorFo
                 <SelectValue placeholder="Хэлтэс сонгох" />
               </SelectTrigger>
               <SelectContent>
+                {/* 🎯 Пропсоор орж ирсэн систем даяарх нэгдсэн жагсаалтыг зурж байна */}
                 {departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>
                     {dept}

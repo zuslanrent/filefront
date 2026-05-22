@@ -1,6 +1,28 @@
 "use client"
 
-import { Search, Plus, Settings, ChevronDown, Filter, MoreHorizontal, Eye, FileText, Pencil, Ban, Trash2, Building2, Clock, ChevronUp, Download, ZoomIn, X, ChevronRight, Layers, ImageIcon } from "lucide-react"
+import { 
+  Search, 
+  Plus, 
+  Settings, 
+  ChevronDown, 
+  Filter, 
+  MoreHorizontal, 
+  Eye, 
+  FileText, 
+  Pencil, 
+  Ban, 
+  Trash2, 
+  Building2, 
+  Clock, 
+  ChevronUp, 
+  Download, 
+  ZoomIn, 
+  X, 
+  ChevronRight, 
+  ChevronLeft,
+  Layers, 
+  ImageIcon 
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,9 +47,11 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
-// Image Lightbox Component
+// ==========================================
+// 1. IMAGE LIGHTBOX COMPONENT
+// ==========================================
 interface ImageLightboxProps {
   images: string[]
   initialIndex?: number
@@ -37,6 +61,12 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({ images, initialIndex = 0, open, onClose }: ImageLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(initialIndex)
+    }
+  }, [initialIndex, open])
 
   if (images.length === 0) return null
 
@@ -57,10 +87,9 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full p-0 bg-black/95 border-none">
+      <DialogContent className="max-w-4xl w-full p-0 bg-black/95 border-none overflow-hidden">
         <DialogTitle className="sr-only">Зураг харах</DialogTitle>
-        <div className="relative">
-          {/* Close button */}
+        <div className="relative min-h-[60vh] flex flex-col justify-center">
           <Button
             variant="ghost"
             size="icon"
@@ -70,7 +99,6 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
             <X className="h-5 w-5" />
           </Button>
 
-          {/* Download button */}
           <Button
             variant="ghost"
             size="icon"
@@ -80,16 +108,14 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
             <Download className="h-5 w-5" />
           </Button>
 
-          {/* Image */}
-          <div className="flex items-center justify-center min-h-[60vh] p-8">
+          <div className="flex items-center justify-center p-8 flex-1">
             <img
               src={images[currentIndex]}
               alt={`Image ${currentIndex + 1}`}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              className="max-w-full max-h-[70vh] object-contain rounded-lg select-none"
             />
           </div>
 
-          {/* Navigation */}
           {images.length > 1 && (
             <>
               <Button
@@ -98,7 +124,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 rounded-full h-12 w-12"
                 onClick={handlePrev}
               >
-                <ChevronDown className="h-6 w-6 rotate-90" />
+                <ChevronLeft className="h-6 w-6" />
               </Button>
               <Button
                 variant="ghost"
@@ -106,10 +132,9 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 rounded-full h-12 w-12"
                 onClick={handleNext}
               >
-                <ChevronDown className="h-6 w-6 -rotate-90" />
+                <ChevronRight className="h-6 w-6" />
               </Button>
 
-              {/* Dots */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
                 {images.map((_, idx) => (
                   <button
@@ -125,8 +150,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
             </>
           )}
 
-          {/* Counter */}
-          <div className="absolute bottom-4 right-4 text-white/70 text-sm">
+          <div className="absolute bottom-4 right-4 text-white/70 text-sm font-medium bg-black/40 px-2 py-1 rounded-md">
             {currentIndex + 1} / {images.length}
           </div>
         </div>
@@ -135,6 +159,9 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
   )
 }
 
+// ==========================================
+// 2. CATEGORY SIDEBAR COMPONENT
+// ==========================================
 interface CategorySidebarProps {
   categories: Category[]
   selectedCategory: string | null
@@ -174,7 +201,7 @@ export function CategorySidebar({
           className={cn(
             "w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all font-medium",
             selectedCategory === null
-              ? "bg-blue-300 text-primary-foreground shadow-md"
+              ? "bg-primary text-primary-foreground shadow-md"
               : "text-sidebar-foreground hover:bg-sidebar-accent/50"
           )}
         >
@@ -216,14 +243,18 @@ export function CategorySidebar({
                   </button>
                 </div>
                 
-                {/* Sub-categories */}
                 {hasSubCategories && isExpanded && (
                   <div className="ml-8 mt-1 space-y-0.5 border-l-2 border-border pl-2">
                     {category.subCategories?.map((sub) => (
                       <button
                         key={sub.id}
-                        onClick={() => onSelectCategory(category.id)}
-                        className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+                        onClick={() => onSelectCategory(sub.id)}
+                        className={cn(
+                          "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors block",
+                          selectedCategory === sub.id
+                            ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                            : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        )}
                       >
                         {sub.name}
                       </button>
@@ -250,11 +281,15 @@ export function CategorySidebar({
   )
 }
 
+// ==========================================
+// 3. SEARCH HEADER COMPONENT (ЗАСАГДСАН)
+// ==========================================
 interface SearchHeaderProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onAddNew: () => void
   categories: Category[]
+  departments: string[] // 👈 Алдааг засахын тулд TypeScript Төрлийг нэмэв
   selectedDepartment: string
   onDepartmentChange: (dept: string) => void
   selectedStatus: string
@@ -268,6 +303,7 @@ export function SearchHeader({
   searchQuery,
   onSearchChange,
   onAddNew,
+  departments = [], // 👈 Гаднаас ирэх статик жагсаалтыг энд хүлээн авна
   selectedDepartment,
   onDepartmentChange,
   selectedStatus,
@@ -276,8 +312,6 @@ export function SearchHeader({
   activeCount,
   onClearFilters,
 }: SearchHeaderProps) {
-  const departments = ["IT хэлтэс", "Санхүү хэлтэс", "Хүний нөөцийн хэлтэс", "Борлуулалтын хэлтэс", "Үйл ажиллагааны хэлтэс"]
-
   return (
     <header className="border-b border-border bg-card p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -309,7 +343,7 @@ export function SearchHeader({
         </div>
 
         <Select value={selectedDepartment} onValueChange={onDepartmentChange}>
-          <SelectTrigger className="w-[180px] h-10 rounded-xl">
+          <SelectTrigger className="w-[220px] h-10 rounded-xl">
             <SelectValue placeholder="Бүх хэлтэс" />
           </SelectTrigger>
           <SelectContent>
@@ -338,16 +372,19 @@ export function SearchHeader({
         <Button 
           variant="ghost" 
           onClick={onClearFilters}
-          className="h-10 px-4 rounded-xl text-muted-foreground hover:text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          className="h-10 px-4 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <X className="h-4 w-4 mr-2" />
-          Clear Filters
+          Шүүлтүүр арилгах
         </Button>
       </div>
     </header>
   )
 }
 
+// ==========================================
+// 4. ERROR TABLE COMPONENT
+// ==========================================
 interface ErrorTableProps {
   errors: ErrorRecord[]
   categories: Category[]
@@ -367,7 +404,11 @@ export function ErrorTable({
   onDeleteError,
   onToggleStatus 
 }: ErrorTableProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(categories.map(c => c.id)))
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setExpandedCategories(new Set(categories.map(c => c.id)))
+  }, [categories])
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId)
@@ -381,8 +422,9 @@ export function ErrorTable({
     return sub?.name || null
   }
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("mn-MN", {
+  const formatDate = (dateValue: Date | string) => {
+    if (!dateValue) return "-"
+    return new Date(dateValue).toLocaleDateString("mn-MN", {
       year: "numeric",
       month: "numeric",
       day: "numeric",
@@ -399,7 +441,6 @@ export function ErrorTable({
     setExpandedCategories(newExpanded)
   }
 
-  // Group errors by category
   const groupedErrors = categories.reduce((acc, category) => {
     const categoryErrors = errors.filter(e => e.categoryId === category.id)
     if (categoryErrors.length > 0) {
@@ -426,7 +467,6 @@ export function ErrorTable({
           const isExpanded = expandedCategories.has(categoryId)
           return (
             <div key={categoryId} className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
-              {/* Category Header */}
               <button
                 onClick={() => toggleCategory(categoryId)}
                 className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -447,7 +487,6 @@ export function ErrorTable({
                 )}
               </button>
 
-              {/* Table */}
               {isExpanded && (
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -508,7 +547,7 @@ export function ErrorTable({
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Building2 className="h-4 w-4" />
-                                <span className="truncate max-w-[100px]">{error.department}</span>
+                                <span className="truncate max-w-[120px]">{error.department}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3">
