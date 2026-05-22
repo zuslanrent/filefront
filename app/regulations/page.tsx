@@ -24,7 +24,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 
-// ✅ Production болон Local орчинд Mixed Content болон хаяг олдохгүй унах алдаанаас сэргийлэх тохиргоо
+// ✅ Зургийн дагуу хатуу кодчилсон хэлтсийн жагсаалт (Static Departments)
+const STATIC_DEPARTMENTS = [
+  "Бизнес хөгжлийн хэлтэс",
+  "Санхүү төлөвлөлтийн хэлтэс",
+  "Санхүү бүртгэлийн хэлтэс",
+  "Хүний нөөцийн хэлтэс",
+  "Хууль, эрх зүй гэрээний алба",
+  "Захиргааны хэлтэс",
+  "Мэдээлэл технологийн хэлтэс",
+  "БОНЗ, Олон нийттэй харилцах хэлтэс",
+  "Барилга угсралтын хэлтэс",
+  "Төлөвлөгөө мониторинг чанарын удирдлагын хэлтэс",
+  "Инженерингийн хэлтэс",
+  "Эрсдэл дотоод хяналтын алба",
+  "Хөдлөх бүрэлдэхүүний хэлтэс",
+  "Судалгаа, Хөгжүүлэлтийн R&D төв",
+  "Худалдан авалтын хэлтэс",
+  "Захиргаа, аж ахуй, тээвэр удирдлагын хэлтэс"
+];
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
 function authHeaders(): HeadersInit {
@@ -36,7 +55,6 @@ function authHeaders(): HeadersInit {
   };
 }
 
-// Backend-ийн regulation өгөгдлийг RegulationFile төрөлд хөрвүүлэх функц
 function transformRegulation(item: any): RegulationFile {
   return {
     id: item.uuid || item.id,
@@ -91,7 +109,6 @@ export default function RegulationsPage() {
 
   const canManage = canUserUpload(currentUser);
 
-  // API-аас regulations татах
   const fetchRegulations = async () => {
     setLoading(true);
     setError(null);
@@ -133,7 +150,6 @@ export default function RegulationsPage() {
     }
   };
 
-  // Regulation-ийг идэвхгүй болгох
   const deactivateRegulation = async (
     regulation: RegulationFile,
     reason: string,
@@ -154,7 +170,6 @@ export default function RegulationsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Audit log үүсгэх
         fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
           headers: authHeaders(),
@@ -179,7 +194,6 @@ export default function RegulationsPage() {
     }
   };
 
-  // Regulation устгах
   const deleteRegulation = async (regulation: RegulationFile) => {
     try {
       const res = await fetch(`${API_URL}/api/regulations/${regulation.id}`, {
@@ -188,7 +202,6 @@ export default function RegulationsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Audit log үүсгэх
         fetch(`${API_URL}/api/audit-logs`, {
           method: "POST",
           headers: authHeaders(),
@@ -321,7 +334,6 @@ export default function RegulationsPage() {
     window.location.href = `/regulations/${regulation.id}/edit`;
   };
 
-  // Шинэ бүлэг API-д хадгалах
   const handleAddCategory = async () => {
     if (!newCategoryName) return;
     setCategoryLoading(true);
@@ -386,6 +398,8 @@ export default function RegulationsPage() {
             filters={filters}
             onFiltersChange={setFilters}
             categories={categories}
+            // ✅ `RegulationsFilters` рүү бэлдсэн static хэлтсийн жагсаалтаа дамжуулна
+            departments={STATIC_DEPARTMENTS} 
           />
           {canManage && (
             <div className="flex justify-end">

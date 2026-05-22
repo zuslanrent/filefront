@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,37 +27,20 @@ import type { FilterOptions, Category } from "@/types/regulations";
 import { format } from "date-fns";
 import { mn } from "date-fns/locale";
 
-// ✅ Дотоод сүлжээний API хаягийг хувьсагчид шилжүүлэв
-const DEPT_API_URL = "/api/departments";
-
-interface Department {
-  id: string | number;
-  name: string;
-}
-
 interface RegulationsFiltersProps {
   filters: FilterOptions;
   onFiltersChange: (filters: FilterOptions) => void;
   categories?: Category[];
+  departments: string[]; // 👈 Эцэг бүрэлдэхүүнээс static жагсаалтыг энд хүлээж авна
 }
 
 export function RegulationsFilters({
   filters,
   onFiltersChange,
   categories = [],
+  departments, // 👈 Пропс задрал (Destructuring)
 }: RegulationsFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [departments, setDepartments] = useState<Department[]>([]);
-
-  useEffect(() => {
-    fetch(DEPT_API_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data.data ?? []);
-        setDepartments(list);
-      })
-      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
-  }, []);
 
   const handleSearchChange = (value: string) =>
     onFiltersChange({ ...filters, search: value });
@@ -122,7 +105,7 @@ export function RegulationsFilters({
           </SelectContent>
         </Select>
 
-        {/* Хэлтэс сонгох */}
+        {/* Хэлтэс сонгох (Static Жагсаалтаар зурна) */}
         <Select value={filters.department} onValueChange={handleDepartmentChange}>
           <SelectTrigger className="w-full sm:w-[180px] bg-background">
             <SelectValue placeholder="Хэлтэс сонгох" />
@@ -130,8 +113,8 @@ export function RegulationsFilters({
           <SelectContent>
             <SelectItem value="all">Бүх хэлтэс</SelectItem>
             {departments.map((dept) => (
-              <SelectItem key={dept.id} value={String(dept.name)}>
-                {dept.name}
+              <SelectItem key={dept} value={dept}>
+                {dept}
               </SelectItem>
             ))}
           </SelectContent>
