@@ -44,8 +44,9 @@ export function RegulationsFilters({
 
   const handleSearchChange = (value: string) =>
     onFiltersChange({ ...filters, search: value });
-  const handleDepartmentChange = (value: string) =>
-    onFiltersChange({ ...filters, department: value });
+  const handleDepartmentChange = (value: string) => {
+  onFiltersChange({ ...filters, department: value === "all" ? "" : value });
+};
   const handleCategoryChange = (value: string) =>
     onFiltersChange({ ...filters, category: value });
   const handleStatusChange = (value: string) =>

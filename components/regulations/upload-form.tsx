@@ -39,19 +39,32 @@ import { format } from "date-fns";
 import { mn } from "date-fns/locale";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const DEPT_URL = '/api/departments';
+// ✅ Зургийн дагуу хатуу кодчилсон хэлтсийн жагсаалт (Static Departments)
+const STATIC_DEPARTMENTS = [
+  "Бизнес хөгжлийн хэлтэс",
+  "Санхүү төлөвлөлтийн хэлтэс",
+  "Санхүү бүртгэлийн хэлтэс",
+  "Хүний нөөцийн хэлтэс",
+  "Хууль, эрх зүй гэрээний алба",
+  "Захиргааны хэлтэс",
+  "Мэдээлэл технологийн хэлтэс",
+  "БОНЗ, Олон нийттэй харилцах хэлтэс",
+  "Барилга угсралтын хэлтэс",
+  "Төлөвлөгөө мониторинг чанарын удирдлагын хэлтэс",
+  "Инженерингийн хэлтэс",
+  "Эрсдэл дотоод хяналтын алба",
+  "Хөдлөх бүрэлдэхүүний хэлтэс",
+  "Судалгаа, Хөгжүүлэлтийн R&D төв",
+  "Худалдан авалтын хэлтэс",
+  "Захиргаа, аж ахуй, тээвэр удирдлагын хэлтэс"
+];
 
-interface Department {
-  id: string | number;
-  name: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function UploadForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
 
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
@@ -85,15 +98,6 @@ export function UploadForm() {
         }
       })
       .catch((err) => console.error("Бүлэг татахад алдаа:", err));
-
-    // Departments — intranet API-аас татах
-    fetch(DEPT_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data.data ?? []);
-        setDepartments(list);
-      })
-      .catch((err) => console.error("Хэлтэс татахад алдаа:", err));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +132,6 @@ export function UploadForm() {
         );
         formData.append("uploaded_by", currentUser.id);
         formData.append("uploaded_by_name", currentUser.name);
-        // ← Permissions нэмэх
         formData.append("view_permissions", JSON.stringify(viewPermissions));
         formData.append(
           "download_permissions",
@@ -199,7 +202,7 @@ export function UploadForm() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Бүлэг — өөрийн API-аас */}
+            {/* Бүлэг */}
             <div className="space-y-2">
               <Label htmlFor="category">Бүлэг *</Label>
               <Select value={category} onValueChange={setCategory}>
@@ -216,7 +219,7 @@ export function UploadForm() {
               </Select>
             </div>
 
-            {/* Хэлтэс — intranet API-аас */}
+            {/* Хариуцсан хэлтэс — Static жагсаалтаас */}
             <div className="space-y-2">
               <Label htmlFor="department">Хариуцсан хэлтэс *</Label>
               <Select value={department} onValueChange={setDepartment}>
@@ -224,9 +227,9 @@ export function UploadForm() {
                   <SelectValue placeholder="Хэлтэс сонгох" />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
+                  {STATIC_DEPARTMENTS.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
                     </SelectItem>
                   ))}
                 </SelectContent>

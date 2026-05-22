@@ -1,20 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 
-const DEPT_URL = '/api/departments'
-
-interface Department {
-  id: string | number
-  name: string
-}
+// ✅ Бусад бүх фронтенд хэсэгтэй яг ижил, системд ашиглагдаж буй статик хэлтсийн жагсаалт
+const STATIC_DEPARTMENTS = [
+  "Бизнес хөгжлийн хэлтэс",
+  "Санхүү төлөвлөлтийн хэлтэс",
+  "Санхүү бүртгэлийн хэлтэс",
+  "Хүний нөөцийн хэлтэс",
+  "Хууль, эрх зүй гэрээний алба",
+  "Захиргааны хэлтэс",
+  "Мэдээлэл технологийн хэлтэс",
+  "БОНЗ, Олон нийттэй харилцах хэлтэс",
+  "Барилга угсралтын хэлтэс",
+  "Төлөвлөгөө мониторинг чанарын удирдлагын хэлтэс",
+  "Инженерингийн хэлтэс",
+  "Эрсдэл дотоод хяналтын алба",
+  "Хөдлөх бүрэлдэхүүний хэлтэс",
+  "Судалгаа, Хөгжүүлэлтийн R&D төв",
+  "Худалдан авалтын хэлтэс",
+  "Захиргаа, аж ахуй, тээвэр удирдлагын хэлтэс"
+]
 
 interface PermissionSelectorProps {
   title: string
   description: string
-  selectedDepartments: string[]
+  selectedDepartments: string[] // 👈 ID биш, сонгогдсон хэлтсийн нэрс (Текст) массив хэлбэрээр орж ирнэ
   onSelectionChange: (departments: string[]) => void
 }
 
@@ -24,35 +36,27 @@ export function PermissionSelector({
   selectedDepartments,
   onSelectionChange,
 }: PermissionSelectorProps) {
-  const [departments, setDepartments] = useState<Department[]>([])
 
-  useEffect(() => {
-    fetch(DEPT_URL)
-      .then(res => res.json())
-      .then(data => {
-        const list = Array.isArray(data) ? data : data.data ?? []
-        setDepartments(list)
-      })
-      .catch(err => console.error('Хэлтэс татахад алдаа:', err))
-  }, [])
-
+  // "Бүх хэлтэс" сонгох эсвэл цуцлах үед
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      onSelectionChange(departments.map(d => String(d.id)))
+      onSelectionChange([...STATIC_DEPARTMENTS]) // Бүх хэлтсийн нэрийг массивт хуулна
     } else {
-      onSelectionChange([])
+      onSelectionChange([]) // Массивыг хоосон болгоно
     }
   }
 
-  const handleDepartmentToggle = (departmentId: string, checked: boolean) => {
+  // Тухайн нэг хэлтсийг сонгох эсвэл цуцлах үед
+  const handleDepartmentToggle = (deptName: string, checked: boolean) => {
     if (checked) {
-      onSelectionChange([...selectedDepartments, departmentId])
+      onSelectionChange([...selectedDepartments, deptName])
     } else {
-      onSelectionChange(selectedDepartments.filter(id => id !== departmentId))
+      onSelectionChange(selectedDepartments.filter(name => name !== deptName))
     }
   }
 
-  const allSelected = departments.length > 0 && departments.every(d => selectedDepartments.includes(String(d.id)))
+  // Бүх хэлтэс сонгогдсон эсэхийг шалгах логик (Нэрээр нь шалгана)
+  const allSelected = STATIC_DEPARTMENTS.length > 0 && STATIC_DEPARTMENTS.every(dept => selectedDepartments.includes(dept))
   const someSelected = selectedDepartments.length > 0 && !allSelected
 
   return (
@@ -63,7 +67,7 @@ export function PermissionSelector({
       </div>
 
       <div className="border rounded-lg p-4 space-y-3">
-        {/* Select all */}
+        {/* Бүгдийг сонгох Checkbox */}
         <div className="flex items-center gap-2 pb-3 border-b">
           <Checkbox
             id={`${title}-all`}
@@ -76,30 +80,26 @@ export function PermissionSelector({
           </Label>
         </div>
 
-        {/* Department list */}
-        {departments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Уншиж байна...</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {departments.map(dept => (
-              <div key={dept.id} className="flex items-center gap-2">
-                <Checkbox
-                  id={`${title}-${dept.id}`}
-                  checked={selectedDepartments.includes(String(dept.id))}
-                  onCheckedChange={(checked) =>
-                    handleDepartmentToggle(String(dept.id), checked === true)
-                  }
-                />
-                <Label
-                  htmlFor={`${title}-${dept.id}`}
-                  className="text-sm cursor-pointer"
-                >
-                  {dept.name}
-                </Label>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Хэлтсүүдийн жагсаалт (Статик массиваас шууд зурна) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {STATIC_DEPARTMENTS.map(dept => (
+            <div key={dept} className="flex items-center gap-2 py-0.5">
+              <Checkbox
+                id={`${title}-${dept}`}
+                checked={selectedDepartments.includes(dept)}
+                onCheckedChange={(checked) =>
+                  handleDepartmentToggle(dept, checked === true)
+                }
+              />
+              <Label
+                htmlFor={`${title}-${dept}`}
+                className="text-sm cursor-pointer select-none truncate"
+              >
+                {dept}
+              </Label>
+            </div>
+          ))}
+        </div>
       </div>
 
       {selectedDepartments.length > 0 && (
