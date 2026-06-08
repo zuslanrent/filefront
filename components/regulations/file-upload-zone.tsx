@@ -14,13 +14,12 @@ import {
   X,
   CheckCircle2,
 } from 'lucide-react'
-import { formatFileSize } from '@/lib/mock-data/regulations'
 
 interface FileUploadZoneProps {
   files: File[]
   onFilesChange: (files: File[]) => void
   maxFiles?: number
-  maxSize?: number // in bytes
+  maxSize?: number
 }
 
 const ACCEPTED_FILE_TYPES = {
@@ -35,23 +34,27 @@ const ACCEPTED_FILE_TYPES = {
   'image/jpeg': ['.jpg', '.jpeg'],
 }
 
+// mock-data-аас салгаж локал функц болгов
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
 function getFileIcon(file: File) {
   const type = file.type
-  if (type === 'application/pdf') {
+  if (type === 'application/pdf')
     return <FileText className="size-8 text-red-500" />
-  }
-  if (type.includes('word') || type.includes('document')) {
+  if (type.includes('word') || type.includes('document'))
     return <FileText className="size-8 text-blue-500" />
-  }
-  if (type.includes('excel') || type.includes('spreadsheet')) {
+  if (type.includes('excel') || type.includes('spreadsheet'))
     return <FileSpreadsheet className="size-8 text-green-600" />
-  }
-  if (type.includes('powerpoint') || type.includes('presentation')) {
+  if (type.includes('powerpoint') || type.includes('presentation'))
     return <Presentation className="size-8 text-orange-500" />
-  }
-  if (type.startsWith('image/')) {
+  if (type.startsWith('image/'))
     return <Image className="size-8 text-purple-500" />
-  }
   return <File className="size-8 text-muted-foreground" />
 }
 
@@ -59,16 +62,17 @@ export function FileUploadZone({
   files, 
   onFilesChange, 
   maxFiles = 10,
-  maxSize = 50 * 1024 * 1024 // 50MB
+  maxSize = 100 * 1024 * 1024, // 100MB
 }: FileUploadZoneProps) {
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    // Simulate upload progress for each file
-    const newFiles = [...files, ...acceptedFiles].slice(0, maxFiles)
-    
-    acceptedFiles.forEach((file) => {
-      // Simulate upload progress
+    // Давхар нэртэй файл шүүх
+    const existingNames = new Set(files.map(f => f.name))
+    const uniqueNew = acceptedFiles.filter(f => !existingNames.has(f.name))
+    const newFiles = [...files, ...uniqueNew].slice(0, maxFiles)
+
+    uniqueNew.forEach((file) => {
       let progress = 0
       const interval = setInterval(() => {
         progress += 10
@@ -76,9 +80,7 @@ export function FileUploadZone({
           ...prev,
           [file.name]: Math.min(progress, 100),
         }))
-        if (progress >= 100) {
-          clearInterval(interval)
-        }
+        if (progress >= 100) clearInterval(interval)
       }, 100)
     })
 
@@ -93,13 +95,18 @@ export function FileUploadZone({
   })
 
   const removeFile = (index: number) => {
-    const newFiles = files.filter((_, i) => i !== index)
-    onFilesChange(newFiles)
+    const file = files[index]
+    // Progress state-аас ч устгах
+    setUploadProgress((prev) => {
+      const next = { ...prev }
+      delete next[file.name]
+      return next
+    })
+    onFilesChange(files.filter((_, i) => i !== index))
   }
 
   return (
     <div className="space-y-4">
-      {/* Drop zone */}
       <div
         {...getRootProps()}
         className={`
@@ -125,7 +132,7 @@ export function FileUploadZone({
                   Файл чирж оруулах эсвэл сонгох
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, PNG, JPG (50MB хүртэл)
+                  PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, PNG, JPG (100MB хүртэл)
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm">
@@ -136,7 +143,6 @@ export function FileUploadZone({
         </div>
       </div>
 
-      {/* File list */}
       {files.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">
@@ -144,7 +150,7 @@ export function FileUploadZone({
           </p>
           <div className="space-y-2">
             {files.map((file, index) => {
-              const progress = uploadProgress[file.name] || 100
+              const progress = uploadProgress[file.name] ?? 100
               const isComplete = progress === 100
 
               return (

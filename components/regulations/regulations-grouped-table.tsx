@@ -3,21 +3,44 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  FileText, FileSpreadsheet, Presentation, Image, File,
-  Download, Eye, MoreHorizontal, Clock, Building2,
-  ChevronDown, FolderOpen, Edit, Trash2, XCircle, Info,
+  FileText,
+  FileSpreadsheet,
+  Presentation,
+  Image,
+  File,
+  Download,
+  Eye,
+  MoreHorizontal,
+  Clock,
+  Building2,
+  ChevronDown,
+  FolderOpen,
+  Edit,
+  Trash2,
+  XCircle,
+  Info,
 } from "lucide-react";
 import type { RegulationFile, Category } from "@/types/regulations";
 import { currentUser } from "@/lib/mock-data/users";
@@ -46,16 +69,21 @@ function getFileIcon(fileType: string) {
   switch (type) {
     case "pdf":
     case "doc":
-    case "docx": return <FileText className="size-4 text-red-500" />;
+    case "docx":
+      return <FileText className="size-4 text-red-500" />;
     case "xls":
-    case "xlsx": return <FileSpreadsheet className="size-4 text-emerald-600" />;
+    case "xlsx":
+      return <FileSpreadsheet className="size-4 text-emerald-600" />;
     case "ppt":
-    case "pptx": return <Presentation className="size-4 text-orange-500" />;
+    case "pptx":
+      return <Presentation className="size-4 text-orange-500" />;
     case "png":
     case "jpg":
     case "jpeg":
-    case "image": return <Image className="size-4 text-blue-500" />;
-    default: return <File className="size-4 text-slate-400" />;
+    case "image":
+      return <Image className="size-4 text-blue-500" />;
+    default:
+      return <File className="size-4 text-slate-400" />;
   }
 }
 
@@ -64,16 +92,21 @@ function getFileIconBg(fileType: string) {
   switch (type) {
     case "pdf":
     case "doc":
-    case "docx": return "bg-red-50";
+    case "docx":
+      return "bg-red-50";
     case "xls":
-    case "xlsx": return "bg-emerald-50";
+    case "xlsx":
+      return "bg-emerald-50";
     case "ppt":
-    case "pptx": return "bg-orange-50";
+    case "pptx":
+      return "bg-orange-50";
     case "png":
     case "jpg":
     case "jpeg":
-    case "image": return "bg-blue-50";
-    default: return "bg-slate-50";
+    case "image":
+      return "bg-blue-50";
+    default:
+      return "bg-slate-50";
   }
 }
 
@@ -107,7 +140,7 @@ export function RegulationsGroupedTable({
   onDeactivate,
 }: RegulationsGroupedTableProps) {
   const [openCategories, setOpenCategories] = useState<string[]>(
-    categories.map((c) => c.id)
+    categories.map((c) => c.id),
   );
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -117,7 +150,7 @@ export function RegulationsGroupedTable({
       grouped[cat.id] = regulations.filter((r) => r.category === cat.id);
     });
     const uncategorized = regulations.filter(
-      (r) => !r.category || !categories.some((c) => c.id === r.category)
+      (r) => !r.category || !categories.some((c) => c.id === r.category),
     );
     if (uncategorized.length > 0) grouped["uncategorized"] = uncategorized;
     return grouped;
@@ -127,13 +160,16 @@ export function RegulationsGroupedTable({
     setOpenCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
+        : [...prev, categoryId],
     );
   };
 
   const canDownload = (regulation: RegulationFile) => {
     if (regulation.downloadPermissions?.length > 0) {
-      return regulation.downloadPermissions.includes(userDepartment) || userDepartment === "it";
+      return (
+        regulation.downloadPermissions.includes(userDepartment) ||
+        userDepartment === "it"
+      );
     }
     return regulation.department === userDepartment || userDepartment === "it";
   };
@@ -174,7 +210,9 @@ export function RegulationsGroupedTable({
         <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
           <FileText className="size-8 text-slate-400" />
         </div>
-        <h3 className="text-base font-semibold text-slate-700">Дүрэм журам олдсонгүй</h3>
+        <h3 className="text-base font-semibold text-slate-700">
+          Дүрэм журам олдсонгүй
+        </h3>
         <p className="text-sm text-slate-400 mt-1 max-w-xs">
           Хайлтын үр дүн олдсонгүй эсвэл танд харах эрх байхгүй байна
         </p>
@@ -185,7 +223,17 @@ export function RegulationsGroupedTable({
   const allCategories = [
     ...categories,
     ...(groupedRegulations["uncategorized"]?.length
-      ? [{ id: "uncategorized", name: "Бусад", description: "", order: 999, parentId: null, createdAt: "", updatedAt: "" }]
+      ? [
+          {
+            id: "uncategorized",
+            name: "Бусад",
+            description: "",
+            order: 999,
+            parentId: null,
+            createdAt: "",
+            updatedAt: "",
+          },
+        ]
       : []),
   ];
 
@@ -197,7 +245,11 @@ export function RegulationsGroupedTable({
         const isOpen = openCategories.includes(category.id);
 
         return (
-          <Collapsible key={category.id} open={isOpen} onOpenChange={() => toggleCategory(category.id)}>
+          <Collapsible
+            key={category.id}
+            open={isOpen}
+            onOpenChange={() => toggleCategory(category.id)}
+          >
             <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               {/* Category header */}
               <CollapsibleTrigger asChild>
@@ -206,7 +258,9 @@ export function RegulationsGroupedTable({
                     <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                       <FolderOpen className="size-4 text-blue-600" />
                     </div>
-                    <span className="font-semibold text-slate-800">{category.name}</span>
+                    <span className="font-semibold text-slate-800">
+                      {category.name}
+                    </span>
                     <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
                       {categoryRegulations.length}
                     </span>
@@ -254,7 +308,9 @@ export function RegulationsGroupedTable({
                               href={`/regulations/${regulation.id}`}
                               className="flex items-center gap-3 group/link"
                             >
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${getFileIconBg(regulation.fileType)}`}>
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${getFileIconBg(regulation.fileType)}`}
+                              >
                                 {getFileIcon(regulation.fileType)}
                               </div>
                               <div className="min-w-0">
@@ -284,7 +340,9 @@ export function RegulationsGroupedTable({
                               <Clock className="size-3.5 text-slate-400 flex-shrink-0" />
                               <span className="text-sm text-slate-600">
                                 {regulation.approvedDate
-                                  ? new Date(regulation.approvedDate).toLocaleDateString("mn-MN")
+                                  ? new Date(
+                                      regulation.approvedDate,
+                                    ).toLocaleDateString("mn-MN")
                                   : "—"}
                               </span>
                             </div>
@@ -324,31 +382,43 @@ export function RegulationsGroupedTable({
                                   <MoreHorizontal className="size-4 text-slate-500" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border-slate-200">
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-48 rounded-xl shadow-lg border-slate-200"
+                              >
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/regulations/${regulation.id}`} className="flex items-center gap-2 cursor-pointer">
+                                  <Link
+                                    href={`/regulations/${regulation.id}`}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
                                     <Eye className="size-4 text-slate-500" />
                                     <span className="text-sm">Харах</span>
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/regulations/${regulation.id}`} className="flex items-center gap-2 cursor-pointer">
+                                  <Link
+                                    href={`/regulations/${regulation.id}`}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
                                     <Info className="size-4 text-slate-500" />
                                     <span className="text-sm">Дэлгэрэнгүй</span>
                                   </Link>
                                 </DropdownMenuItem>
-                                {canDownload(regulation) && regulation.fileUrl && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleDownload(regulation)}
-                                    disabled={downloadingId === regulation.id}
-                                    className="flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Download className="size-4 text-slate-500" />
-                                    <span className="text-sm">
-                                      {downloadingId === regulation.id ? "Татаж байна..." : "Татах"}
-                                    </span>
-                                  </DropdownMenuItem>
-                                )}
+                                {canDownload(regulation) &&
+                                  regulation.fileUrl && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleDownload(regulation)}
+                                      disabled={downloadingId === regulation.id}
+                                      className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Download className="size-4 text-slate-500" />
+                                      <span className="text-sm">
+                                        {downloadingId === regulation.id
+                                          ? "Татаж байна..."
+                                          : "Татах"}
+                                      </span>
+                                    </DropdownMenuItem>
+                                  )}
                                 {canManage && (
                                   <>
                                     <DropdownMenuSeparator className="bg-slate-100" />
@@ -364,7 +434,9 @@ export function RegulationsGroupedTable({
                                       className="flex items-center gap-2 cursor-pointer text-orange-600 focus:text-orange-600"
                                     >
                                       <XCircle className="size-4" />
-                                      <span className="text-sm">Идэвхгүй болгох</span>
+                                      <span className="text-sm">
+                                        Идэвхгүй болгох
+                                      </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => onDelete?.(regulation)}
